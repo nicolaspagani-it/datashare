@@ -1,22 +1,16 @@
-<script setup>
-import { onMounted, ref } from 'vue'
+<!--
+  App.vue = le composant RACINE, comme le "base.html.twig" de Symfony.
 
-const status = ref('chargement…')
+  Un fichier .vue ("composant") regroupe en un seul fichier :
+    <script>   la logique (le "contrôleur")
+    <template> le HTML      (le "template Twig")
+    <style>    le CSS
 
-onMounted(async () => {
-  try {
-    const res = await fetch('/api/health')
-    const data = await res.json()
-    status.value = `${data.app} : ${data.status}`
-  } catch {
-    status.value = 'API injoignable'
-  }
-})
-</script>
-
+  Ici il n'y a pas de logique : juste un <RouterView />.
+  <RouterView /> est un emplacement qui affiche la page correspondant à l'URL
+  courante (HomeView pour "/", AuthView pour "/login", etc.).
+  C'est l'équivalent de {% block body %}{% endblock %} dans Twig.
+-->
 <template>
-  <main>
-    <h1>DataShare</h1>
-    <p>API Symfony → {{ status }}</p>
-  </main>
+  <RouterView />
 </template>
