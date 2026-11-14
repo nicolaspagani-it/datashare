@@ -14,6 +14,10 @@
 
   <slot /> = l'emplacement où s'affiche le contenu placé entre les balises
   <BaseButton>...</BaseButton> (comme un {% block %} Twig).
+
+  <component :is="..."> choisit dynamiquement la balise : un lien ou un bouton.
+  (Ce commentaire est ici et pas dans le <template> : un commentaire à la racine du
+  template compte comme un 2e élément racine et gêne les tests.)
 -->
 <script setup>
 import { RouterLink } from 'vue-router'
@@ -28,7 +32,6 @@ defineProps({
 </script>
 
 <template>
-  <!-- <component :is="..."> choisit dynamiquement la balise : un lien ou un bouton -->
   <component
     :is="to ? RouterLink : 'button'"
     :to="to"

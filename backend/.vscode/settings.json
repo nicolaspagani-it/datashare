@@ -1,0 +1,6 @@
+{
+  // Extension "PHPUnit" de recca0120 : on lui donne explicitement le PHP de Laragon
+  // et le chemin de PHPUnit (relatif au dossier backend, ouvert comme racine du projet).
+  "phpunit.php": "C:\\laragon\\bin\\php\\php-8.4.6-Win32-vs17-x64\\php.exe",
+  "phpunit.phpunit": "vendor/bin/phpunit"
+}
