@@ -9,6 +9,7 @@
 
 import { defineStore } from 'pinia'
 import { api, getToken, setToken } from '../api'
+import { useFilesStore } from './files'
 
 // defineStore('auth', ...) déclare le service. Il est créé une seule fois (singleton).
 export const useAuthStore = defineStore('auth', {
@@ -52,6 +53,9 @@ export const useAuthStore = defineStore('auth', {
       this.token = null
       this.user = null
       setToken(null)
+      // On vide aussi la liste des fichiers : un autre utilisateur qui se connecte
+      // ensuite ne doit jamais voir, même un instant, les fichiers du précédent.
+      useFilesStore().$reset()
     },
   },
 })

@@ -9,21 +9,16 @@ import { computed, ref } from 'vue'
 import { ArrowRight, Lock, MoreVertical, Trash2 } from 'lucide-vue-next'
 import BaseButton from './BaseButton.vue'
 import { expiryLabel, isExpired } from '../utils/expiry'
-// Les 3 icônes de type de fichier viennent du design Figma (src/assets/icons)
-import iconImage from '../assets/icons/file-image.svg'
-import iconAudio from '../assets/icons/file-audio.svg'
-import iconVideo from '../assets/icons/file-video.svg'
+import { iconForMime } from '../utils/fileIcons'
 
 const props = defineProps({
-  // { id, name, type: 'image' | 'audio' | 'video', expiresAt, protected }
+  // Un fichier tel que le renvoie l'API : { id, name, type (MIME : "image/png"...), expiresAt, protected }
   file: { type: Object, required: true },
 })
 const emit = defineEmits(['delete', 'open'])
 
-const icons = { image: iconImage, audio: iconAudio, video: iconVideo }
-
 // computed() : valeurs recalculées automatiquement si "file" change
-const icon = computed(() => icons[props.file.type] ?? iconImage)
+const icon = computed(() => iconForMime(props.file.type))
 const expired = computed(() => isExpired(props.file.expiresAt))
 const label = computed(() => expiryLabel(props.file.expiresAt))
 

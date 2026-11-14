@@ -62,7 +62,7 @@ const hasErrors = computed(() => props.errors.length > 0)
 }
 
 .field__label {
-  font-size: 14px;
+  font-size: 16px; /* même taille que le label du Select dans le design */
   line-height: 24px;
 }
 

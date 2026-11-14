@@ -27,7 +27,12 @@ export const setUnauthorizedHandler = (fn) => (onUnauthorized = fn)
 // ici avant de continuer", ce qui se lit comme du code PHP normal.
 export async function api(path, { method = 'GET', body } = {}) {
   const headers = { Accept: 'application/json' }
-  if (body) headers['Content-Type'] = 'application/json'
+
+  // Un FormData (envoi de fichier) est transmis tel quel : c'est le navigateur qui
+  // fixe lui-même le Content-Type "multipart/form-data" (avec sa "boundary").
+  // Tout autre body est envoyé en JSON.
+  const isFormData = body instanceof FormData
+  if (body && !isFormData) headers['Content-Type'] = 'application/json'
 
   // Si on est connecté, on envoie le token à chaque requête.
   // C'est ce que le firewall "api" de Symfony (jwt: ~) attend dans cet en-tête.
@@ -37,7 +42,8 @@ export async function api(path, { method = 'GET', body } = {}) {
   // fetch() est la fonction native du navigateur pour appeler une URL.
   // "/api/..." passe par le proxy de Vite (vite.config.js) qui le renvoie vers Symfony.
   // JSON.stringify transforme un objet JS en texte JSON (= json_encode en PHP).
-  const res = await fetch(`/api${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
+  const payload = body ? (isFormData ? body : JSON.stringify(body)) : undefined
+  const res = await fetch(`/api${path}`, { method, headers, body: payload })
 
   // res.json() lit le corps de la réponse (= json_decode). Si ce n'est pas du JSON,
   // ".catch(() => null)" évite de planter et renvoie null.

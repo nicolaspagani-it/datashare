@@ -1,33 +1,50 @@
 <!--
-  HomeView.vue = la page d'accueil "Tu veux partager un fichier ?".
+  HomeView.vue = la page d'accueil, qui est aussi le début du parcours de téléversement.
   Publique : visible aussi sans être connecté (le bouton de l'en-tête s'adapte,
   voir SiteHeader.vue). Fond, en-tête et pied de page viennent de PublicLayout.
+
+  Deux états :
+    - aucun fichier choisi : "Tu veux partager un fichier ?" et le gros bouton rond
+    - un fichier choisi    : la carte "Ajouter un fichier" (UploadForm)
 -->
 <script setup>
 import { ref } from 'vue'
 import { UploadCloud } from 'lucide-vue-next'
 import PublicLayout from '../components/PublicLayout.vue'
+import UploadForm from '../components/UploadForm.vue'
 
-// Référence vers le <input type="file"> caché : le gros bouton rond clique dessus
-// pour ouvrir la fenêtre de choix de fichier du navigateur.
+// Le fichier choisi par l'utilisateur (objet File du navigateur), ou null.
+const file = ref(null)
+
+// Référence vers le <input type="file"> caché : le bouton clique dessus pour ouvrir
+// la fenêtre de choix de fichier du navigateur.
 const fileInput = ref(null)
 
-function onFilesSelected(event) {
-  // TODO : envoyer les fichiers à l'API Symfony (POST /api/files) quand elle existera.
-  const names = Array.from(event.target.files).map((f) => f.name)
-  console.info('Fichiers choisis :', names)
+function openPicker() {
+  fileInput.value.click()
+}
+
+function onFileSelected(event) {
+  const chosen = event.target.files?.[0]
+  if (chosen) file.value = chosen
+  event.target.value = '' // permet de re-choisir le même fichier ensuite
 }
 </script>
 
 <template>
   <PublicLayout>
-    <h1 class="title">Tu veux partager un fichier ?</h1>
+    <UploadForm v-if="file" :file="file" @change-file="openPicker" />
 
-    <!-- Deux cercles imbriqués : un halo translucide autour d'un disque foncé -->
-    <button type="button" class="upload" aria-label="Choisir des fichiers à partager" @click="fileInput.click()">
-      <span class="upload__disc"><UploadCloud :size="48" /></span>
-    </button>
-    <input ref="fileInput" type="file" multiple hidden @change="onFilesSelected" />
+    <template v-else>
+      <h1 class="title">Tu veux partager un fichier ?</h1>
+
+      <!-- Deux cercles imbriqués : un halo translucide autour d'un disque foncé -->
+      <button type="button" class="upload" aria-label="Choisir un fichier à partager" @click="openPicker">
+        <span class="upload__disc"><UploadCloud :size="48" /></span>
+      </button>
+    </template>
+
+    <input ref="fileInput" type="file" hidden @change="onFileSelected" />
   </PublicLayout>
 </template>
 

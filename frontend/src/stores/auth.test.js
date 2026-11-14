@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from './auth'
+import { useFilesStore } from './files'
 import { getToken, setToken } from '../api'
 
 // On remplace SEULEMENT la fonction api() (les appels réseau) par un faux ;
@@ -100,6 +101,18 @@ describe('store auth', () => {
   })
 
   describe('logout()', () => {
+    it('vide aussi la liste des fichiers, pour ne rien montrer à l\'utilisateur suivant', () => {
+      const auth = useAuthStore()
+      const files = useFilesStore()
+      files.items = [{ id: 1, name: 'secret.pdf' }]
+      files.loaded = true
+
+      auth.logout()
+
+      expect(files.items).toEqual([])
+      expect(files.loaded).toBe(false)
+    })
+
     it('oublie le token et l\'utilisateur, aussi dans le localStorage', async () => {
       setToken('jwt')
       const auth = useAuthStore()

@@ -11,7 +11,7 @@ const DAY = 24 * 60 * 60 * 1000
 const makeFile = (overrides = {}) => ({
   id: 1,
   name: 'photo.jpg',
-  type: 'image',
+  type: 'image/jpeg', // type MIME, tel que le renvoie l'API
   expiresAt: Date.now() + 2 * DAY - 1000,
   protected: false,
   ...overrides,
@@ -30,9 +30,9 @@ describe('FileRow', () => {
 
     // On compare avec les vrais fichiers importés (Vite les remplace par une URL ou un data-URI).
     it.each([
-      ['image', iconImage],
-      ['audio', iconAudio],
-      ['video', iconVideo],
+      ['image/png', iconImage],
+      ['audio/mpeg', iconAudio],
+      ['video/mp4', iconVideo],
     ])('affiche l\'icône du type %s', (type, icon) => {
       const wrapper = mountRow(makeFile({ type }))
 
@@ -44,7 +44,7 @@ describe('FileRow', () => {
     })
 
     it('utilise l\'icône image pour un type inconnu', () => {
-      const wrapper = mountRow(makeFile({ type: 'inconnu' }))
+      const wrapper = mountRow(makeFile({ type: 'application/pdf' }))
 
       expect(wrapper.find('img.row__icon').attributes('src')).toBe(iconImage)
     })

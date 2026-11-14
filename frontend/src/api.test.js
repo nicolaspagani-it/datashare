@@ -82,6 +82,18 @@ describe('api()', () => {
     expect(JSON.parse(options.body)).toEqual({ email: 'a@b.fr', password: 'secret123' })
   })
 
+  it('envoie un FormData tel quel, sans Content-Type JSON (le navigateur fixe le multipart)', async () => {
+    fetchMock.mockResolvedValue(response(201, { url: 'https://datashare.fr/abc' }))
+    const form = new FormData()
+    form.append('file', new File(['x'], 'photo.jpg'))
+
+    await api('/files', { method: 'POST', body: form })
+
+    const options = fetchMock.mock.calls[0][1]
+    expect(options.body).toBe(form)
+    expect(options.headers['Content-Type']).toBeUndefined()
+  })
+
   describe('gestion des erreurs', () => {
     it('lève une erreur avec le titre des violations (422), sans le préfixe du champ', async () => {
       fetchMock.mockResolvedValue(

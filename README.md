@@ -13,6 +13,24 @@ cd backend && symfony serve --no-tls -d   # ou: php -S 127.0.0.1:8000 -t public
 cd frontend && npm run dev                 # http://localhost:5173
 ```
 
+## API des fichiers
+
+| Route | Accès | Rôle |
+|---|---|---|
+| `POST /api/files` | public (un token JWT, s'il est fourni, rattache le fichier à l'utilisateur) | envoyer un fichier (`multipart/form-data` : `file`, `expiration` = 1 à 7 jours, `password` optionnel) |
+| `GET /api/files` | connecté | liste de mes fichiers |
+| `DELETE /api/files/{id}` | connecté, propriétaire | supprimer un fichier |
+
+- Taille maximale : 1 Go (`app.max_upload_size` dans `backend/config/services.yaml`). PHP doit accepter au moins cette taille (`upload_max_filesize` et `post_max_size`).
+- Les fichiers sont stockés dans `backend/var/uploads/` (hors de `public/`), sous un nom aléatoire.
+- Le mot de passe optionnel d'un fichier n'est jamais stocké en clair : seul son hash l'est.
+- Le lien de partage est `<FRONT_URL>/<token>`. `FRONT_URL` se définit dans `backend/.env.local` (par défaut `http://localhost:5173`).
+- Les fichiers expirés sont supprimés du disque par une commande, à planifier (toutes les heures par exemple, avec le Planificateur de tâches de Windows ou cron). La ligne reste en base : l'utilisateur voit « Expiré » dans sa liste.
+
+```bash
+cd backend && php bin/console app:files:purge-expired
+```
+
 ## Tests
 
 ### Backend (PHPUnit)

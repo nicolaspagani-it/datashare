@@ -7,6 +7,20 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Dossier de stockage des fichiers envoyés (hors de public/ : jamais accessible par URL)
+    app.upload_dir: '%kernel.project_dir%/var/uploads'
+    # Taille maximale d'un fichier, en octets : 1 Go
+    app.max_upload_size: 1000000000
+    # Adresse du site (frontend) : sert à construire le lien de partage "<adresse>/<token>".
+    # Se change avec la variable d'environnement FRONT_URL (à mettre dans .env.local).
+    env(FRONT_URL): 'http://localhost:5173'
+    app.front_url: '%env(FRONT_URL)%'
+
+when@test:
+    parameters:
+        # En test : dossier séparé, et limite minuscule (1 Ko) pour tester "fichier trop gros" sans créer 1 Go
+        app.upload_dir: '%kernel.project_dir%/var/uploads_test'
+        app.max_upload_size: 1000
 
 services:
     # default configuration for services in *this* file

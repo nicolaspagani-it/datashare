@@ -1,23 +1,28 @@
 <!--
-  MySpaceView.vue = la page "Mon espace" : la liste des fichiers de l'utilisateur.
+  MySpaceView.vue = la page "Mon espace" : la liste des fichiers de l'utilisateur connecté.
   Elle assemble les composants : sidebar + barre du haut + onglets + lignes de fichiers.
+  Les fichiers viennent de l'API (GET /api/files) via le store "files".
 -->
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppSidebar from '../components/AppSidebar.vue'
 import AppTopbar from '../components/AppTopbar.vue'
+import BaseButton from '../components/BaseButton.vue'
 import FilterTabs from '../components/FilterTabs.vue'
 import FileRow from '../components/FileRow.vue'
 import { useAuthStore } from '../stores/auth'
+import { useFilesStore } from '../stores/files'
 import { isExpired } from '../utils/expiry'
 
 const auth = useAuthStore()
+const filesStore = useFilesStore()
 const router = useRouter()
 
 // --- État de la page --------------------------------------------------------
 const menuOpen = ref(false) // tiroir de la sidebar (mobile)
 const filter = ref('all') // onglet sélectionné : 'all' | 'active' | 'expired'
+const actionError = ref('') // erreur d'une action (ex : suppression qui échoue)
 
 const tabs = [
   { value: 'all', label: 'Tous' },
@@ -25,31 +30,34 @@ const tabs = [
   { value: 'expired', label: 'Expiré' },
 ]
 
-// TODO : données de démonstration reprises du design Figma.
-// À remplacer par un appel à l'API Symfony (GET /api/files) quand elle existera.
-const DAY = 24 * 60 * 60 * 1000
-const files = ref([
-  { id: 1, name: 'IMG_9210_123123131313213231.jpg', type: 'image', expiresAt: Date.now() + 2 * DAY - 1000, protected: true },
-  { id: 2, name: 'compo2.mp3', type: 'audio', expiresAt: Date.now() + DAY - 1000, protected: false },
-  { id: 3, name: 'vacances_ardeche.mp4', type: 'video', expiresAt: Date.now() - DAY, protected: false },
-])
+// À l'ouverture de la page, on (re)charge la liste depuis le serveur.
+onMounted(() => filesStore.fetch())
 
-// Liste filtrée selon l'onglet : recalculée automatiquement quand "filter" ou "files" change.
+// Liste filtrée selon l'onglet : recalculée automatiquement quand "filter" ou la liste change.
 const visibleFiles = computed(() => {
-  if (filter.value === 'active') return files.value.filter((f) => !isExpired(f.expiresAt))
-  if (filter.value === 'expired') return files.value.filter((f) => isExpired(f.expiresAt))
-  return files.value
+  const files = filesStore.items
+  if (filter.value === 'active') return files.filter((f) => !isExpired(f.expiresAt))
+  if (filter.value === 'expired') return files.filter((f) => isExpired(f.expiresAt))
+  return files
 })
 
 // --- Actions ----------------------------------------------------------------
-function removeFile(file) {
-  // TODO : appeler DELETE /api/files/{id} quand l'API existera.
-  files.value = files.value.filter((f) => f.id !== file.id)
+async function removeFile(file) {
+  // Une suppression est définitive (le lien de partage ne marche plus) : on demande confirmation.
+  if (!window.confirm(`Supprimer « ${file.name} » ? Le lien de partage ne fonctionnera plus.`)) return
+
+  actionError.value = ''
+  try {
+    await filesStore.remove(file)
+  } catch (e) {
+    actionError.value = e.message
+  }
 }
 
 function openFile(file) {
-  // TODO : ouvrir/télécharger le fichier quand l'API existera.
-  console.info('Accéder au fichier', file.name)
+  // Ouvre le lien de partage dans un nouvel onglet ("noopener" : le nouvel onglet
+  // n'a aucun accès à cette page, c'est une bonne pratique de sécurité).
+  window.open(file.url, '_blank', 'noopener')
 }
 
 function logout() {
@@ -68,14 +76,34 @@ function logout() {
       <main class="content">
         <h1 class="content__title">Mes fichiers</h1>
 
-        <FilterTabs v-model="filter" :options="tabs" />
+        <!-- Erreur de chargement de la liste, avec un bouton pour réessayer -->
+        <div v-if="filesStore.error" class="content__error" role="alert">
+          <p>{{ filesStore.error }}</p>
+          <BaseButton variant="outline" @click="filesStore.fetch()">Réessayer</BaseButton>
+        </div>
 
-        <ul class="files">
-          <!-- v-for = la boucle {% for %} de Twig. :key aide Vue à suivre chaque ligne. -->
-          <FileRow v-for="file in visibleFiles" :key="file.id" :file="file" @delete="removeFile" @open="openFile" />
-        </ul>
+        <!-- Premier chargement : rien à afficher encore -->
+        <p v-else-if="!filesStore.loaded" class="content__info">Chargement de tes fichiers…</p>
 
-        <p v-if="!visibleFiles.length" class="content__empty">Aucun fichier à afficher.</p>
+        <!-- Aucun fichier du tout : on invite à en ajouter un -->
+        <div v-else-if="!filesStore.items.length" class="content__info content__empty-all">
+          <p>Tu n'as pas encore partagé de fichier.</p>
+          <BaseButton variant="soft" size="lg" :to="{ name: 'home' }">Ajouter un fichier</BaseButton>
+        </div>
+
+        <template v-else>
+          <FilterTabs v-model="filter" :options="tabs" />
+
+          <!-- Erreur d'une action (suppression refusée par le serveur...) -->
+          <p v-if="actionError" class="content__action-error" role="alert">{{ actionError }}</p>
+
+          <ul class="files">
+            <!-- v-for = la boucle {% for %} de Twig. :key aide Vue à suivre chaque ligne. -->
+            <FileRow v-for="file in visibleFiles" :key="file.id" :file="file" @delete="removeFile" @open="openFile" />
+          </ul>
+
+          <p v-if="!visibleFiles.length" class="content__info">Aucun fichier à afficher.</p>
+        </template>
       </main>
     </div>
   </div>
@@ -115,7 +143,27 @@ function logout() {
   padding: 0;
 }
 
-.content__empty {
+.content__info {
   color: var(--text-muted);
+}
+
+.content__empty-all {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.content__error {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--danger);
+}
+
+.content__action-error {
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 20px;
 }
 </style>
