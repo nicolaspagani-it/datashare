@@ -96,6 +96,28 @@ describe('api()', () => {
       )
     })
 
+    it('joint à l\'erreur la liste des violations (champ + message) et le code HTTP', async () => {
+      const violations = [
+        { propertyPath: 'email', title: 'Email KO' },
+        { propertyPath: 'password', title: 'Mot de passe KO' },
+      ]
+      fetchMock.mockResolvedValue(response(422, { violations }))
+
+      const error = await api('/register', { method: 'POST', body: {} }).catch((e) => e)
+
+      expect(error.violations).toEqual(violations)
+      expect(error.status).toBe(422)
+    })
+
+    it('a une liste de violations vide quand le serveur n\'en renvoie pas', async () => {
+      fetchMock.mockResolvedValue(response(500, { detail: 'Boum' }))
+
+      const error = await api('/x').catch((e) => e)
+
+      expect(error.violations).toEqual([])
+      expect(error.status).toBe(500)
+    })
+
     it('utilise "message" quand il n\'y a pas de violations (ex : 409)', async () => {
       fetchMock.mockResolvedValue(response(409, { message: 'Cet email est déjà utilisé.' }))
 

@@ -42,6 +42,44 @@ describe('BaseInput', () => {
     expect(wrapper.emitted('update:modelValue')[0]).toEqual(['nouveau@mail.fr'])
   })
 
+  describe('messages d\'erreur', () => {
+    it('n\'affiche aucune erreur par défaut', () => {
+      const wrapper = mount(BaseInput, { props: { label: 'Email' } })
+
+      expect(wrapper.find('.field__errors').exists()).toBe(false)
+      expect(wrapper.find('input').classes()).not.toContain('field__input--invalid')
+      expect(wrapper.find('input').attributes('aria-invalid')).toBeUndefined()
+    })
+
+    it('affiche chaque message sous le champ', () => {
+      const wrapper = mount(BaseInput, { props: { label: 'Email', errors: ['Premier message', 'Second message'] } })
+
+      expect(wrapper.findAll('.field__error').map((e) => e.text())).toEqual(['Premier message', 'Second message'])
+      // Les messages sont placés APRÈS l'<input> dans la page
+      const children = [...wrapper.element.children].map((el) => el.tagName)
+      expect(children).toEqual(['LABEL', 'INPUT', 'DIV'])
+    })
+
+    it('marque le champ comme invalide et le relie à ses messages (accessibilité)', () => {
+      const wrapper = mount(BaseInput, { props: { label: 'Email', errors: ['Adresse invalide'] } })
+
+      const input = wrapper.find('input')
+      expect(input.classes()).toContain('field__input--invalid')
+      expect(input.attributes('aria-invalid')).toBe('true')
+      expect(input.attributes('aria-describedby')).toBe(wrapper.find('.field__errors').attributes('id'))
+      expect(wrapper.find('.field__errors').attributes('role')).toBe('alert')
+    })
+
+    it('retire l\'erreur quand la liste redevient vide', async () => {
+      const wrapper = mount(BaseInput, { props: { label: 'Email', errors: ['KO'] } })
+
+      await wrapper.setProps({ errors: [] })
+
+      expect(wrapper.find('.field__errors').exists()).toBe(false)
+      expect(wrapper.find('input').attributes('aria-describedby')).toBeUndefined()
+    })
+  })
+
   it('transmet les attributs (placeholder, required...) à l\'<input> et non à la <div>', () => {
     const wrapper = mount(BaseInput, {
       props: { label: 'Email' },

@@ -44,15 +44,23 @@ class AuthControllerTest extends ApiTestCase
         $data = $this->json('POST', '/api/register', ['email' => 'alice@example.com', 'password' => 'password123']);
 
         $this->assertResponseStatusCodeSame(409);
-        $this->assertSame('Cet email est déjà utilisé.', $data['message']);
+        $this->assertSame('Cette adresse email est déjà utilisée.', $data['message']);
+        // Même format que les erreurs de validation : le frontend l'affiche sous le champ email.
+        $this->assertSame('email', $data['violations'][0]['propertyPath']);
+        $this->assertSame('Cette adresse email est déjà utilisée.', $data['violations'][0]['title']);
         $this->assertSame(1, $this->em->getRepository(User::class)->count([]));
     }
 
     public function testRegisterRejectsAnInvalidEmail(): void
     {
-        $this->json('POST', '/api/register', ['email' => 'pas-un-email', 'password' => 'password123']);
+        $data = $this->json('POST', '/api/register', ['email' => 'pas-un-email', 'password' => 'password123']);
 
         $this->assertResponseStatusCodeSame(422);
+        $this->assertSame('email', $data['violations'][0]['propertyPath']);
+        $this->assertSame(
+            "L'adresse email n'est pas valide (exemple : nom@domaine.fr).",
+            $data['violations'][0]['title'],
+        );
         $this->assertSame(0, $this->em->getRepository(User::class)->count([]));
     }
 
@@ -61,8 +69,26 @@ class AuthControllerTest extends ApiTestCase
         $data = $this->json('POST', '/api/register', ['email' => 'alice@example.com', 'password' => 'abc']);
 
         $this->assertResponseStatusCodeSame(422);
+        $this->assertCount(1, $data['violations']);
         $this->assertSame('password', $data['violations'][0]['propertyPath']);
-        $this->assertStringContainsString('trop courte', $data['violations'][0]['title']);
+        $this->assertSame(
+            'Le mot de passe est trop court : il doit contenir au moins 8 caractères.',
+            $data['violations'][0]['title'],
+        );
+    }
+
+    public function testRegisterReportsEachErrorOnItsOwnField(): void
+    {
+        $data = $this->json('POST', '/api/register', ['email' => 'pas-un-email', 'password' => 'abc']);
+
+        $this->assertResponseStatusCodeSame(422);
+        $byField = [];
+        foreach ($data['violations'] as $violation) {
+            $byField[$violation['propertyPath']][] = $violation['title'];
+        }
+        $this->assertSame(['email', 'password'], array_keys($byField));
+        $this->assertStringContainsString('adresse email', $byField['email'][0]);
+        $this->assertStringContainsString('mot de passe', $byField['password'][0]);
     }
 
     public function testRegisterRejectsAnEmptyBody(): void

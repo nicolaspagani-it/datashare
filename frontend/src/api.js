@@ -60,7 +60,14 @@ export async function api(path, { method = 'GET', body } = {}) {
       data?.message ||
       data?.detail ||
       `Erreur ${res.status}`
-    throw new Error(message)
+
+    // On joint à l'erreur la liste détaillée des violations : [{ propertyPath: 'email', title: '...' }].
+    // Un formulaire peut ainsi afficher chaque message sous le champ concerné
+    // (propertyPath = le nom du champ), au lieu d'un seul message global.
+    const error = new Error(message)
+    error.status = res.status
+    error.violations = Array.isArray(data?.violations) ? data.violations : []
+    throw error
   }
   return data
 }

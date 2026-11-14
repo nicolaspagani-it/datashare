@@ -25,6 +25,12 @@ async function fillAndSubmit(wrapper, values) {
   await flushPromises() // attend la fin des appels asynchrones (login, redirection...)
 }
 
+// Les messages d'erreur affichés SOUS le champ qui porte ce label (liste vide s'il n'y en a pas).
+function errorsUnder(wrapper, label) {
+  const field = wrapper.findAll('.field').find((f) => f.find('label').text() === label)
+  return field.findAll('.field__error').map((e) => e.text())
+}
+
 describe('AuthView', () => {
   beforeEach(() => localStorage.clear())
 
@@ -127,18 +133,138 @@ describe('AuthView', () => {
 
       await fillAndSubmit(wrapper, ['alice@example.com', 'password123', 'autre-chose'])
 
-      expect(wrapper.find('[role="alert"]').text()).toBe('Les mots de passe ne correspondent pas.')
+      expect(errorsUnder(wrapper, 'Verification du mot de passe')).toEqual(['Les deux mots de passe ne sont pas identiques.'])
       expect(register).not.toHaveBeenCalled()
     })
 
-    it('affiche l\'erreur du serveur (ex : email déjà utilisé)', async () => {
+    it('affiche une erreur sans champ associé dans la zone générale', async () => {
       const { wrapper, router, auth } = await mountView('register')
-      vi.spyOn(auth, 'register').mockRejectedValue(new Error('Cet email est déjà utilisé.'))
+      vi.spyOn(auth, 'register').mockRejectedValue(new Error('Erreur 502'))
 
       await fillAndSubmit(wrapper, ['alice@example.com', 'password123', 'password123'])
 
-      expect(wrapper.find('[role="alert"]').text()).toBe('Cet email est déjà utilisé.')
+      expect(wrapper.find('.card__error').text()).toBe('Erreur 502')
       expect(router.currentRoute.value.name).toBe('register')
+    })
+  })
+
+  describe('erreurs affichées sous le champ concerné', () => {
+    // Fabrique l'erreur que lèverait api() : un message + la liste des violations.
+    const apiError = (...violations) => Object.assign(new Error('violations'), { violations })
+
+    it('place une erreur d\'email sous le champ Email, et rien sous les mots de passe', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(
+        apiError({ propertyPath: 'email', title: "L'adresse email n'est pas valide (exemple : nom@domaine.fr)." }),
+      )
+
+      await fillAndSubmit(wrapper, ['pas-un-email', 'password123', 'password123'])
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual(["L'adresse email n'est pas valide (exemple : nom@domaine.fr)."])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual([])
+      expect(errorsUnder(wrapper, 'Verification du mot de passe')).toEqual([])
+      expect(wrapper.find('.card__error').exists()).toBe(false)
+    })
+
+    it('place une erreur de mot de passe sous le champ Mot de passe, et rien sous l\'email', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(
+        apiError({ propertyPath: 'password', title: 'Le mot de passe est trop court : il doit contenir au moins 8 caractères.' }),
+      )
+
+      await fillAndSubmit(wrapper, ['alice@example.com', 'abc', 'abc'])
+
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual([
+        'Le mot de passe est trop court : il doit contenir au moins 8 caractères.',
+      ])
+      expect(errorsUnder(wrapper, 'Email')).toEqual([])
+    })
+
+    it('répartit plusieurs erreurs, chacune sous son champ', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(
+        apiError(
+          { propertyPath: 'email', title: 'Email KO' },
+          { propertyPath: 'password', title: 'Mot de passe KO 1' },
+          { propertyPath: 'password', title: 'Mot de passe KO 2' },
+        ),
+      )
+
+      await fillAndSubmit(wrapper, ['x', 'y', 'y'])
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual(['Email KO'])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual(['Mot de passe KO 1', 'Mot de passe KO 2'])
+    })
+
+    it('place l\'erreur "email déjà utilisé" sous le champ Email', async () => {
+      const { wrapper, router, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(
+        apiError({ propertyPath: 'email', title: 'Cette adresse email est déjà utilisée.' }),
+      )
+
+      await fillAndSubmit(wrapper, ['alice@example.com', 'password123', 'password123'])
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual(['Cette adresse email est déjà utilisée.'])
+      expect(router.currentRoute.value.name).toBe('register')
+    })
+
+    it('met le champ en erreur (rouge, aria-invalid) uniquement quand il a une erreur', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(apiError({ propertyPath: 'email', title: 'Email KO' }))
+
+      await fillAndSubmit(wrapper, ['x', 'password123', 'password123'])
+
+      const [emailInput, passwordInput] = wrapper.findAll('input')
+      expect(emailInput.classes()).toContain('field__input--invalid')
+      expect(emailInput.attributes('aria-invalid')).toBe('true')
+      expect(passwordInput.classes()).not.toContain('field__input--invalid')
+      expect(passwordInput.attributes('aria-invalid')).toBeUndefined()
+    })
+
+    it('affiche dans la zone générale une erreur portant sur un champ inconnu', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(apiError({ propertyPath: 'autreChose', title: 'Erreur inattendue.' }))
+
+      await fillAndSubmit(wrapper, ['alice@example.com', 'password123', 'password123'])
+
+      expect(wrapper.find('.card__error').text()).toBe('Erreur inattendue.')
+      expect(wrapper.findAll('.field__error')).toHaveLength(0)
+    })
+
+    it('efface l\'erreur d\'un champ dès qu\'on le modifie, sans toucher aux autres', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register').mockRejectedValue(
+        apiError({ propertyPath: 'email', title: 'Email KO' }, { propertyPath: 'password', title: 'Mot de passe KO' }),
+      )
+      await fillAndSubmit(wrapper, ['x', 'y', 'y'])
+
+      await wrapper.findAll('input')[0].setValue('alice@example.com') // on corrige l'email
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual([])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual(['Mot de passe KO'])
+    })
+
+    it('efface les anciennes erreurs à la nouvelle soumission', async () => {
+      const { wrapper, auth } = await mountView('register')
+      vi.spyOn(auth, 'register')
+        .mockRejectedValueOnce(apiError({ propertyPath: 'email', title: 'Email KO' }))
+        .mockResolvedValueOnce()
+      await fillAndSubmit(wrapper, ['x', 'password123', 'password123'])
+      expect(errorsUnder(wrapper, 'Email')).toHaveLength(1)
+
+      await fillAndSubmit(wrapper, ['alice@example.com', 'password123', 'password123'])
+
+      expect(wrapper.findAll('.field__error')).toHaveLength(0)
+    })
+
+    it('efface l\'erreur de confirmation quand on retape un des mots de passe', async () => {
+      const { wrapper } = await mountView('register')
+      await fillAndSubmit(wrapper, ['alice@example.com', 'password123', 'autre-chose'])
+      expect(errorsUnder(wrapper, 'Verification du mot de passe')).toHaveLength(1)
+
+      await wrapper.findAll('input')[2].setValue('password123')
+
+      expect(errorsUnder(wrapper, 'Verification du mot de passe')).toEqual([])
     })
   })
 })

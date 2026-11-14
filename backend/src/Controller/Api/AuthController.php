@@ -22,7 +22,14 @@ final class AuthController extends AbstractController
         EntityManagerInterface $em,
     ): JsonResponse {
         if ($em->getRepository(User::class)->findOneBy(['email' => $payload->email])) {
-            return $this->json(['message' => 'Cet email est déjà utilisé.'], Response::HTTP_CONFLICT);
+            $message = 'Cette adresse email est déjà utilisée.';
+
+            // Même format que les erreurs de validation (violations) : le frontend
+            // affiche ainsi le message sous le champ email, comme pour les autres erreurs.
+            return $this->json([
+                'message' => $message,
+                'violations' => [['propertyPath' => 'email', 'title' => $message]],
+            ], Response::HTTP_CONFLICT);
         }
 
         $user = (new User())->setEmail($payload->email);

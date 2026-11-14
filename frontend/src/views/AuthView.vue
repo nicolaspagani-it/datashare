@@ -7,7 +7,7 @@
   <script setup> : la LOGIQUE du composant (le "contrôleur").
 -->
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '../components/BaseButton.vue'
 import BaseInput from '../components/BaseInput.vue'
@@ -24,19 +24,45 @@ const router = useRouter()
 const email = ref('')
 const password = ref('')
 const passwordConfirm = ref('')
-const error = ref('')
 const loading = ref(false)
 
 const isLogin = computed(() => props.mode === 'login')
 
+// --- Gestion des erreurs ----------------------------------------------------
+// Les erreurs sont rangées par champ : chacune s'affiche sous le champ concerné.
+//   - fieldErrors.email           -> sous le champ Email
+//   - fieldErrors.password        -> sous le champ Mot de passe
+//   - fieldErrors.passwordConfirm -> sous le champ de vérification
+// "error" garde les erreurs qui ne concernent aucun champ (mauvais identifiants, réseau...).
+const emptyErrors = () => ({ email: [], password: [], passwordConfirm: [] })
+const fieldErrors = ref(emptyErrors())
+const error = ref('')
+
+// Dès que l'utilisateur corrige un champ, on efface l'erreur qui lui était associée.
+watch(email, () => (fieldErrors.value.email = []))
+watch(password, () => (fieldErrors.value.password = []))
+watch([password, passwordConfirm], () => (fieldErrors.value.passwordConfirm = []))
+
+// Répartit les erreurs du serveur : "violations" = [{ propertyPath: 'email', title: '...' }].
+// propertyPath est le nom du champ côté Symfony (même nom que dans RegisterRequest).
+function dispatchViolations(violations) {
+  const general = []
+  for (const { propertyPath, title } of violations) {
+    if (propertyPath in fieldErrors.value) fieldErrors.value[propertyPath].push(title)
+    else general.push(title) // erreur sur un champ qu'on n'affiche pas : message global
+  }
+  error.value = general.join(' ')
+}
+
 // Appelée à la soumission du formulaire (= l'action POST du contrôleur).
 async function submit() {
   error.value = ''
+  fieldErrors.value = emptyErrors()
 
   // Inscription : on vérifie côté navigateur que les 2 mots de passe sont identiques.
   // (Le serveur, lui, ne reçoit que "password" et valide sa longueur.)
   if (!isLogin.value && password.value !== passwordConfirm.value) {
-    error.value = 'Les mots de passe ne correspondent pas.'
+    fieldErrors.value.passwordConfirm = ['Les deux mots de passe ne sont pas identiques.']
     return
   }
 
@@ -46,8 +72,12 @@ async function submit() {
     else await auth.register(email.value, password.value)
     router.push({ name: 'home' }) // succès : retour à l'accueil, maintenant connecté
   } catch (e) {
-    // Une 401 sur /login = identifiants incorrects : message clair pour l'utilisateur.
-    error.value = e.message === 'Erreur 401' ? 'Email ou mot de passe incorrect.' : e.message
+    if (e.violations?.length) {
+      dispatchViolations(e.violations) // erreurs de validation : chacune sous son champ
+    } else {
+      // Une 401 sur /login = identifiants incorrects : message clair pour l'utilisateur.
+      error.value = e.message === 'Erreur 401' ? 'Email ou mot de passe incorrect.' : e.message
+    }
   } finally {
     loading.value = false
   }
@@ -67,12 +97,14 @@ async function submit() {
       <h1 class="card__title">{{ isLogin ? 'Connexion' : 'Créer un compte' }}</h1>
 
       <div class="card__fields">
+        <!-- :errors = les messages affichés juste sous ce champ -->
         <BaseInput
           v-model="email"
           label="Email"
           type="email"
           placeholder="Saisissez votre email..."
           autocomplete="email"
+          :errors="fieldErrors.email"
           required
         />
         <BaseInput
@@ -81,6 +113,7 @@ async function submit() {
           type="password"
           placeholder="Saisissez votre mot de passe..."
           :autocomplete="isLogin ? 'current-password' : 'new-password'"
+          :errors="fieldErrors.password"
           required
         />
         <!-- Champ de confirmation : uniquement à l'inscription -->
@@ -91,11 +124,12 @@ async function submit() {
           type="password"
           placeholder="Saisissez le à nouveau"
           autocomplete="new-password"
+          :errors="fieldErrors.passwordConfirm"
           required
         />
       </div>
 
-      <!-- Message d'erreur (role="alert" : lu automatiquement par les lecteurs d'écran) -->
+      <!-- Erreur générale, qui ne concerne aucun champ en particulier -->
       <p v-if="error" class="card__error" role="alert">{{ error }}</p>
 
       <div class="card__actions">
