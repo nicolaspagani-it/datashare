@@ -2,12 +2,16 @@
 
 namespace App\Tests\Support;
 
+use App\Entity\SharedFile;
 use App\Entity\User;
+use App\Service\FileStorage;
+use App\Service\ShareTokenGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -103,6 +107,49 @@ abstract class ApiTestCase extends WebTestCase
         $content = $this->client->getResponse()->getContent();
 
         return $content ? (json_decode($content, true) ?? []) : [];
+    }
+
+    /**
+     * Crée directement en base (et sur le disque) un fichier partagé, sans passer par l'API.
+     *
+     * @param string|null $password mot de passe du fichier (stocké haché), ou null pour un fichier sans mot de passe
+     */
+    protected function createStoredFile(
+        string $name = 'doc.pdf',
+        string $content = 'contenu du fichier',
+        string $mimeType = 'application/pdf',
+        string $expires = '+2 days',
+        ?string $password = null,
+        bool $withContent = true,
+        ?User $owner = null,
+    ): SharedFile {
+        $container = static::getContainer();
+
+        $file = (new SharedFile())
+            ->setOwner($owner)
+            ->setOriginalName($name)
+            ->setMimeType($mimeType)
+            ->setSize(strlen($content))
+            ->setToken($container->get(ShareTokenGenerator::class)->generate())
+            ->setExpiresAt(new \DateTimeImmutable($expires));
+
+        if ($password !== null) {
+            $file->setPasswordHash($container->get(PasswordHasherFactoryInterface::class)->getPasswordHasher(SharedFile::class)->hash($password));
+        }
+        if ($withContent) {
+            $file->setStoredName($container->get(FileStorage::class)->store($this->makeUploadedFile($content, $name)));
+        }
+
+        $this->em->persist($file);
+        $this->em->flush();
+
+        return $file;
+    }
+
+    /** Le contenu exact de la dernière réponse, y compris pour un fichier envoyé en flux (BinaryFileResponse). */
+    protected function responseBody(): string
+    {
+        return (string) $this->client->getInternalResponse()->getContent();
     }
 
     protected function createUser(string $email = 'alice@example.com', string $password = 'password123'): User
