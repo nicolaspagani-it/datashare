@@ -14,6 +14,7 @@ export function makeRouter() {
       { path: '/login', name: 'login', component: Empty },
       { path: '/register', name: 'register', component: Empty },
       { path: '/mon-espace', name: 'my-space', component: Empty },
+      { path: '/:token([A-Za-z0-9]{1,16})', name: 'download', component: Empty },
     ],
   })
 }

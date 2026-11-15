@@ -82,6 +82,35 @@ describe('api()', () => {
     expect(JSON.parse(options.body)).toEqual({ email: 'a@b.fr', password: 'secret123' })
   })
 
+  describe('routes publiques (auth: false)', () => {
+    it('n\'envoie pas le token, même si l\'utilisateur en a un en mémoire', async () => {
+      setToken('vieux-token')
+      fetchMock.mockResolvedValue(response(200, {}))
+
+      await api('/shared/AAAA1111', { auth: false })
+
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined()
+    })
+
+    it('un 401 ne déconnecte pas l\'utilisateur', async () => {
+      fetchMock.mockResolvedValue(response(401, { message: 'Expired JWT Token' }))
+
+      await expect(api('/shared/AAAA1111', { auth: false })).rejects.toThrow()
+
+      expect(onUnauthorized).not.toHaveBeenCalled()
+    })
+
+    it('garde le comportement normal par défaut : token envoyé et 401 qui déconnecte', async () => {
+      setToken('mon-jwt')
+      fetchMock.mockResolvedValue(response(401, { message: 'Expired JWT Token' }))
+
+      await expect(api('/me')).rejects.toThrow()
+
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer mon-jwt')
+      expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('envoie un FormData tel quel, sans Content-Type JSON (le navigateur fixe le multipart)', async () => {
     fetchMock.mockResolvedValue(response(201, { url: 'https://datashare.fr/abc' }))
     const form = new FormData()

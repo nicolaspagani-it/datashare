@@ -26,6 +26,22 @@
   --text: #000;
   --text-muted: rgba(0, 0, 0, 0.5);
 
+  /* Bandeaux d'information (composant AppCallout) : bleu = info, orange = attention, rouge = erreur */
+  --info-bg: #e3edff;
+  --info-border: #a9c3f2;
+  --info-text: #1f3a6e;
+  --warning-bg: #fff3e8;
+  --warning-border: #f1c8a5;
+  --warning-text: #a8490a;
+  --error-bg: #fde3e5;
+  --error-border: #f2a8ae;
+  --error-text: #a3232b;
+
+  /* Bouton désactivé (gris, comme dans le design) */
+  --disabled-bg: #efecea;
+  --disabled-border: #e1dcd9;
+  --disabled-text: #b4aeaa;
+
   /* Dégradé orange -> rouge utilisé par la sidebar et la page d'accueil */
   --gradient: linear-gradient(160deg, #ffb88c 2.29%, #de6262 97.7%);
 

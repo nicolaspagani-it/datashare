@@ -93,9 +93,13 @@ defineProps({
   width: 100%;
 }
 
+/* Désactivé : gris, comme dans le design (valable pour toutes les variantes) */
 .btn:disabled {
-  opacity: 0.6;
+  background: var(--disabled-bg);
+  box-shadow: inset 0 0 0 1px var(--disabled-border);
+  color: var(--disabled-text);
   cursor: not-allowed;
+  filter: none;
 }
 
 .btn--lg {

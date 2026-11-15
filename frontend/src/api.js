@@ -25,7 +25,11 @@ export const setUnauthorizedHandler = (fn) => (onUnauthorized = fn)
 // "async" : la fonction fait des appels réseau, qui sont ASYNCHRONES (le navigateur
 // n'attend pas la réponse en bloquant tout). "await" signifie "attends le résultat
 // ici avant de continuer", ce qui se lit comme du code PHP normal.
-export async function api(path, { method = 'GET', body } = {}) {
+//
+// Option "auth: false" : pour les routes PUBLIQUES (ex : le téléchargement par lien). On n'envoie
+// alors pas le token, et un 401 ne déconnecte pas : un visiteur qui garde un vieux token expiré
+// en mémoire ne doit pas être renvoyé vers /login en ouvrant un lien de partage.
+export async function api(path, { method = 'GET', body, auth = true } = {}) {
   const headers = { Accept: 'application/json' }
 
   // Un FormData (envoi de fichier) est transmis tel quel : c'est le navigateur qui
@@ -36,7 +40,7 @@ export async function api(path, { method = 'GET', body } = {}) {
 
   // Si on est connecté, on envoie le token à chaque requête.
   // C'est ce que le firewall "api" de Symfony (jwt: ~) attend dans cet en-tête.
-  const token = getToken()
+  const token = auth ? getToken() : null
   if (token) headers.Authorization = `Bearer ${token}`
 
   // fetch() est la fonction native du navigateur pour appeler une URL.
@@ -54,7 +58,7 @@ export async function api(path, { method = 'GET', body } = {}) {
   if (!res.ok) {
     // 401 sur une route protégée = token expiré/invalide -> retour à la connexion.
     // Mais pas pour /login : là, un 401 veut juste dire "mauvais mot de passe".
-    if (res.status === 401 && path !== '/login') onUnauthorized()
+    if (res.status === 401 && path !== '/login' && auth) onUnauthorized()
 
     // On cherche un message lisible dans la réponse de Symfony :
     // "message" (nos erreurs), "detail" (erreurs standard), ou la liste "violations"

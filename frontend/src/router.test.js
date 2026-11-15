@@ -40,6 +40,42 @@ describe('gardes de navigation', () => {
     })
   })
 
+  describe('lien de partage /<token>', () => {
+    const goToWithParams = async (path) => {
+      await router.push(path)
+      return router.currentRoute.value
+    }
+
+    it('est une page publique : un visiteur peut l\'ouvrir', async () => {
+      const route = await goToWithParams('/UhGyr4Kd')
+
+      expect(route.name).toBe('download')
+      expect(route.params.token).toBe('UhGyr4Kd')
+    })
+
+    it('est aussi accessible à un utilisateur connecté', async () => {
+      setToken('jwt-valide')
+      setActivePinia(createPinia())
+
+      const route = await goToWithParams('/UhGyr4Kd')
+
+      expect(route.name).toBe('download')
+      expect(api).not.toHaveBeenCalled() // aucune vérification d'authentification
+    })
+
+    it('ne confond jamais /login, /register et /mon-espace avec un lien de partage', async () => {
+      expect((await goToWithParams('/register')).name).toBe('register')
+      expect((await goToWithParams('/login')).name).toBe('login')
+      expect((await goToWithParams('/mon-espace')).name).toBe('login') // protégée : renvoie un visiteur sur /login
+    })
+
+    it('n\'accepte pas un token de plus de 16 caractères', async () => {
+      const route = await goToWithParams('/' + 'a'.repeat(17))
+
+      expect(route.name).not.toBe('download')
+    })
+  })
+
   describe('utilisateur connecté', () => {
     beforeEach(() => {
       setToken('jwt-valide')

@@ -15,9 +15,9 @@ import { Copy, UploadCloud } from 'lucide-vue-next'
 import BaseButton from './BaseButton.vue'
 import BaseInput from './BaseInput.vue'
 import BaseSelect from './BaseSelect.vue'
+import FileSummary from './FileSummary.vue'
 import { api } from '../api'
-import { MAX_FILE_SIZE, formatSize } from '../utils/format'
-import { iconForMime } from '../utils/fileIcons'
+import { MAX_FILE_SIZE } from '../utils/format'
 
 const props = defineProps({ file: { type: File, required: true } })
 const emit = defineEmits(['change-file'])
@@ -41,9 +41,7 @@ const error = ref('')
 const result = ref(null) // { url } quand le téléversement a réussi
 
 // --- Valeurs calculées à partir du fichier ---------------------------------
-const size = computed(() => formatSize(props.file.size))
 const tooBig = computed(() => props.file.size > MAX_FILE_SIZE)
-const icon = computed(() => iconForMime(props.file.type))
 const durationLabel = computed(() => expirations.find((e) => e.value === expiration.value).label.toLowerCase())
 
 // --- Actions -----------------------------------------------------------------
@@ -87,13 +85,7 @@ async function copyLink() {
 
     <!-- ÉTAT 3 : succès -->
     <template v-if="result">
-      <div class="file">
-        <img class="file__icon" :src="icon" alt="" width="24" height="24" />
-        <div class="file__info">
-          <p class="file__name">{{ file.name }}</p>
-          <p class="file__size">{{ size }}</p>
-        </div>
-      </div>
+      <FileSummary :name="file.name" :size="file.size" :type="file.type" />
 
       <!-- Message + lien de partage dans son encadré gris -->
       <div class="share">
@@ -108,14 +100,9 @@ async function copyLink() {
 
     <!-- ÉTATS 1 et 2 : configuration (avec ou sans erreur de taille) -->
     <form v-else class="card__form" novalidate @submit.prevent="upload">
-      <div class="file">
-        <img class="file__icon" :src="icon" alt="" width="24" height="24" />
-        <div class="file__info">
-          <p class="file__name">{{ file.name }}</p>
-          <p class="file__size">{{ size }}</p>
-        </div>
+      <FileSummary :name="file.name" :size="file.size" :type="file.type">
         <BaseButton variant="outline" @click="emit('change-file')">Changer</BaseButton>
-      </div>
+      </FileSummary>
 
       <!-- Trop gros : message rouge directement sous le fichier -->
       <p v-if="tooBig" class="card__error" role="alert">La taille des fichiers est limitée à 1 Go</p>
@@ -205,34 +192,5 @@ async function copyLink() {
 
 .card__copy {
   align-self: center;
-}
-
-/* Ligne "fichier choisi" : icône, nom (coupé avec …), taille, et bouton "Changer" */
-.file {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.file__icon {
-  flex-shrink: 0;
-}
-
-.file__info {
-  flex: 1;
-  min-width: 0; /* permet la coupure avec "…" du nom trop long */
-}
-
-.file__name {
-  overflow: hidden;
-  font-size: 16px;
-  line-height: 24px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.file__size {
-  font-size: 14px;
-  line-height: 16px;
 }
 </style>

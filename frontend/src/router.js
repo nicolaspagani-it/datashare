@@ -12,6 +12,7 @@ import { useAuthStore } from './stores/auth'
 import HomeView from './views/HomeView.vue'
 import AuthView from './views/AuthView.vue'
 import MySpaceView from './views/MySpaceView.vue'
+import DownloadView from './views/DownloadView.vue'
 
 const router = createRouter({
   // Utilise de "vraies" URLs (/login) plutôt que des URLs avec "#" (/#/login).
@@ -31,6 +32,11 @@ const router = createRouter({
     // paramètre (comme un argument de contrôleur) pour choisir connexion / inscription.
     { path: '/login', name: 'login', component: AuthView, props: { mode: 'login' } },
     { path: '/register', name: 'register', component: AuthView, props: { mode: 'register' } },
+
+    // Le lien de partage d'un fichier : /<token> (8 lettres ou chiffres, ex : /UhGyr4Kd). Page PUBLIQUE.
+    // Cette route est déclarée en DERNIER, et vue-router donne la priorité aux chemins fixes : /login,
+    // /register et /mon-espace ne sont donc jamais pris pour un lien de partage.
+    { path: '/:token([A-Za-z0-9]{1,16})', name: 'download', component: DownloadView },
   ],
 })
 
