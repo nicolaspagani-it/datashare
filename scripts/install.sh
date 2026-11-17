@@ -97,6 +97,20 @@ SERVER_MAJOR="$(DB_PASSWORD="$DB_PASSWORD" php "$SCRIPT_DIR/db/check-connection.
     Pas encore d'utilisateur ? Un administrateur peut le créer avec scripts/db/init.sql (voir le README)."
 ok "PostgreSQL $SERVER_MAJOR ($DB_USER@$DB_HOST:$DB_PORT)"
 
+# Si 'npm run dev' tourne encore dans frontend/, remplacer node_modules en dessous casserait ce serveur,
+# et sous Windows (Git Bash) les fichiers verrouillés feraient échouer 'npm ci' à mi-chemin.
+# On vérifie donc AVANT de modifier quoi que ce soit. (ps -axo : Linux et macOS ; absent ailleurs : on ignore.)
+if [ "$SKIP_FRONTEND" -eq 0 ]; then
+  BUSY="$( (ps -axo pid=,args= 2>/dev/null || true) | grep -F "$FRONTEND/node_modules" | grep -v 'grep -F' || true)"
+  if [ -n "$BUSY" ]; then
+    fail "Des programmes Node.js utilisent encore le dossier frontend (souvent 'npm run dev') :
+$BUSY
+    Arrête-les (Ctrl+C dans leur terminal, ou : kill <PID>), puis relance le script.
+    Sinon l'installation du frontend resterait à moitié faite. (--skip-frontend ignore le frontend.)"
+  fi
+  ok 'aucun serveur de développement ne bloque le frontend'
+fi
+
 # --- 2. Backend : dépendances -------------------------------------------------
 
 step 'Backend : installation des dépendances (composer install)'
@@ -178,6 +192,9 @@ if [ "$SKIP_FRONTEND" -eq 1 ]; then
 else
   step 'Frontend : installation des dépendances (npm ci)'
   (cd "$FRONTEND" && npm ci --no-audit --no-fund)
+  # Contrôle : le lanceur de Vite doit exister, sinon 'npm run dev' répondrait "vite: command not found".
+  [ -e "$FRONTEND/node_modules/.bin/vite" ] ||
+    fail "L'installation du frontend est incomplète (frontend/node_modules/.bin/vite introuvable). Supprime le dossier frontend/node_modules et relance le script."
   ok 'dépendances installées'
 fi
 

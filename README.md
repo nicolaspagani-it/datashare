@@ -92,6 +92,8 @@ cd ../frontend && npm ci
 | « Impossible de se connecter à PostgreSQL » | le serveur n'est pas démarré, ou l'hôte, le port, l'utilisateur ou le mot de passe sont faux |
 | `non-existent parameter "40ss"` | un `%` du mot de passe dans `DATABASE_URL` n'est pas doublé (`%%40`). Les scripts le font seuls ; à la main, encode le mot de passe puis double chaque `%` |
 | La connexion répond 500 « private key/passphrase » | `JWT_PASSPHRASE` ne correspond plus aux clés : relance l'installation avec `-Force` / `--force` (régénère les deux) |
+| « Des programmes Node.js utilisent encore le dossier frontend » | un `npm run dev` (ou l'extension Vitest de VS Code) tourne encore : arrête-le (Ctrl+C), puis relance l'installation. Sous Windows, il verrouille `frontend\node_modules` |
+| `'vite' n'est pas reconnu` au `npm run dev` | `frontend\node_modules` est incomplet (installation interrompue). Arrête tout serveur en cours, puis : `cd frontend`, `npm ci` |
 | Un envoi de gros fichier est refusé | `upload_max_filesize` et `post_max_size` de `php.ini` doivent être d'au moins 1 Go |
 
 L'installation a été testée sur Windows 11 (PowerShell 5.1 et Git Bash) à partir d'une copie vierge du projet :

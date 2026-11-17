@@ -140,6 +140,21 @@ if ($connectionExitCode -ne 0) {
 $serverMajor = [int]"$serverMajor".Trim()
 Write-Ok "PostgreSQL $serverMajor ($DbUser@${DbHost}:$DbPort)"
 
+# Sous Windows, un programme qui tourne garde ses fichiers verrouillés. Si 'npm run dev' (ou l'extension
+# Vitest de VS Code) utilise encore frontend\node_modules, 'npm ci' échouerait à mi-chemin et laisserait
+# un node_modules incomplet ('vite' n'est pas reconnu). On vérifie donc AVANT de modifier quoi que ce soit.
+if (-not $SkipFrontend) {
+    $busy = @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -and $_.CommandLine -like "*$Frontend*" })
+    if ($busy.Count -gt 0) {
+        $pids = ($busy | ForEach-Object { "      PID $($_.ProcessId)" }) -join "`n"
+        Fail ("Des programmes Node.js utilisent encore le dossier frontend (souvent 'npm run dev', ou l'extension Vitest de VS Code) :`n$pids`n" +
+            "    Arrête-les (Ctrl+C dans leur terminal, ou : Stop-Process -Id <PID> -Force), puis relance le script.`n" +
+            "    Sinon l'installation du frontend resterait à moitié faite. (-SkipFrontend ignore le frontend.)")
+    }
+    Write-Ok 'aucun serveur de développement ne bloque le frontend'
+}
+
 # --- 2. Backend : dépendances -------------------------------------------------------------------
 
 Write-Step 'Backend : installation des dépendances (composer install)'
@@ -220,6 +235,10 @@ if ($SkipFrontend) {
 } else {
     Write-Step 'Frontend : installation des dépendances (npm ci)'
     Invoke-Native $Frontend 'npm' @('ci', '--no-audit', '--no-fund')
+    # Contrôle : le lanceur de Vite doit exister, sinon 'npm run dev' répondrait "vite n'est pas reconnu".
+    if (-not (Get-ChildItem (Join-Path $Frontend 'node_modules\.bin') -Filter 'vite*' -ErrorAction SilentlyContinue)) {
+        Fail "L'installation du frontend est incomplète (frontend\node_modules\.bin\vite introuvable). Supprime le dossier frontend\node_modules et relance le script."
+    }
     Write-Ok 'dépendances installées'
 }
 
