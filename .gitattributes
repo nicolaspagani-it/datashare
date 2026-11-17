@@ -1,0 +1,3 @@
+# Les scripts shell doivent garder des fins de ligne Unix (LF) : avec des CRLF (Windows),
+# bash échoue avec "\r : commande introuvable".
+*.sh text eol=lf
