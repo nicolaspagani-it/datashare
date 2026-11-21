@@ -17,6 +17,7 @@ import BaseInput from './BaseInput.vue'
 import BaseSelect from './BaseSelect.vue'
 import FileSummary from './FileSummary.vue'
 import { api } from '../api'
+import { useAuthStore } from '../stores/auth'
 import { MAX_FILE_SIZE } from '../utils/format'
 
 const props = defineProps({ file: { type: File, required: true } })
@@ -59,7 +60,15 @@ async function upload() {
     // POST /api/files (Symfony). Réponse : { id, token, name, size, url, protected, expiresAt, ... }
     // En cas d'erreur (fichier trop gros, durée invalide...), api() lève une exception dont le
     // message est celui du serveur : il s'affiche sous le formulaire.
-    result.value = await api('/files', { method: 'POST', body: form })
+    // auth: 'optional' : l'envoi est public. Si le token a expiré (401), on ne perd pas le fichier :
+    // on oublie la session périmée et on renvoie le même formulaire en visiteur.
+    try {
+      result.value = await api('/files', { method: 'POST', body: form, auth: 'optional' })
+    } catch (e) {
+      if (e.status !== 401) throw e
+      useAuthStore().logout()
+      result.value = await api('/files', { method: 'POST', body: form, auth: false })
+    }
   } catch (e) {
     error.value = e.message
   } finally {

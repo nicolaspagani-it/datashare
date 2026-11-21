@@ -58,7 +58,8 @@ describe('AuthView', () => {
 
     it('affiche "Email ou mot de passe incorrect." sur une erreur 401', async () => {
       const { wrapper, router, auth } = await mountView('login')
-      vi.spyOn(auth, 'login').mockRejectedValue(new Error('Erreur 401'))
+      // Erreur réaliste : api() joint le code HTTP, et le texte vient du serveur ("Identifiants invalides.").
+      vi.spyOn(auth, 'login').mockRejectedValue(Object.assign(new Error('Identifiants invalides.'), { status: 401 }))
 
       await fillAndSubmit(wrapper, ['alice@example.com', 'mauvais'])
 

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import UploadForm from './UploadForm.vue'
+import { useAuthStore } from '../stores/auth'
 import iconImage from '../assets/icons/file-image.svg'
 import iconAudio from '../assets/icons/file-audio.svg'
 import iconVideo from '../assets/icons/file-video.svg'
@@ -21,6 +23,29 @@ const submit = async (wrapper) => {
   await wrapper.find('form').trigger('submit')
   await flushPromises()
 }
+
+describe('UploadForm : session expirée', () => {
+  beforeEach(() => {
+    api.mockReset()
+  })
+
+  it('renvoie le fichier en visiteur quand le token a expiré (401), sans le perdre', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const auth = useAuthStore()
+    auth.token = 'vieux-token'
+    const stale = Object.assign(new Error('Invalid JWT Token'), { status: 401 })
+    api.mockRejectedValueOnce(stale).mockResolvedValueOnce({ url: 'http://localhost:5173/AAAA1111' })
+
+    const wrapper = mount(UploadForm, { props: { file: makeFile() }, global: { plugins: [pinia] } })
+    await submit(wrapper)
+
+    expect(api).toHaveBeenNthCalledWith(1, '/files', expect.objectContaining({ auth: 'optional' }))
+    expect(api).toHaveBeenNthCalledWith(2, '/files', expect.objectContaining({ auth: false }))
+    expect(auth.token).toBeNull() // session périmée oubliée
+    expect(wrapper.text()).toContain('http://localhost:5173/AAAA1111') // le lien s'affiche
+  })
+})
 
 describe('UploadForm', () => {
   // Les accolades sont importantes : sans elles, la fonction renverrait le mock, et Vitest

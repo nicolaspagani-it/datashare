@@ -76,7 +76,7 @@ async function submit() {
       dispatchViolations(e.violations) // erreurs de validation : chacune sous son champ
     } else {
       // Une 401 sur /login = identifiants incorrects : message clair pour l'utilisateur.
-      error.value = e.message === 'Erreur 401' ? 'Email ou mot de passe incorrect.' : e.message
+      error.value = e.status === 401 ? 'Email ou mot de passe incorrect.' : e.message
     }
   } finally {
     loading.value = false

@@ -37,7 +37,11 @@ final class PurgeExpiredFilesCommand extends Command
         $expired = $this->files->findExpiredWithContent(new \DateTimeImmutable());
         foreach ($expired as $file) {
             $this->storage->remove($file->getStoredName());
-            $file->setStoredName(null);
+            if ($file->getOwner() === null) {
+                $this->em->remove($file); // envoi anonyme : personne ne le verra dans une liste, on supprime la ligne
+            } else {
+                $file->setStoredName(null);
+            }
         }
         $this->em->flush();
 

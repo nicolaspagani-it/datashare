@@ -11,7 +11,8 @@ security:
         app_user_provider:
             entity:
                 class: App\Entity\User
-                property: email
+                # Pas de "property" : le fournisseur utilise UserRepository::loadUserByIdentifier(),
+                # qui cherche l'email sans tenir compte de la casse.
 
     firewalls:
         dev:
@@ -28,6 +29,10 @@ security:
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            # Anti force brute : 5 échecs par 15 minutes pour le couple email + adresse IP (réponse 401 avec message).
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
         api:
             pattern: ^/api
             stateless: true
@@ -47,6 +52,11 @@ security:
 
 when@test:
     security:
+        firewalls:
+            login:
+                # Le cache de test persiste entre deux exécutions : on ne veut pas de faux blocages.
+                login_throttling:
+                    max_attempts: 100000
         password_hashers:
             # Password hashers are resource-intensive by design to ensure security.
             # In tests, it's safe to reduce their cost to improve performance.

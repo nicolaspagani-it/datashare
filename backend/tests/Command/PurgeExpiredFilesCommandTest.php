@@ -44,9 +44,25 @@ class PurgeExpiredFilesCommandTest extends ApiTestCase
         return $tester;
     }
 
+    public function testExpiredAnonymousFileRowIsDeletedToo(): void
+    {
+        $expired = $this->createFile('anonyme.txt', '-1 day'); // sans propriétaire
+        $path = $this->storage()->path($expired->getStoredName());
+
+        $this->purge();
+
+        $this->assertFileDoesNotExist($path);
+        $this->em->clear();
+        $this->assertNull(static::getContainer()->get(SharedFileRepository::class)->findOneBy(['originalName' => 'anonyme.txt']));
+    }
+
     public function testExpiredFileContentIsRemovedFromDiskButTheRowIsKept(): void
     {
+        $owner = (new \App\Entity\User())->setEmail('purge-owner@example.com')->setPassword('x');
+        $this->em->persist($owner);
         $expired = $this->createFile('vieux.txt', '-1 day');
+        $expired->setOwner($owner);
+        $this->em->flush();
         $path = $this->storage()->path($expired->getStoredName());
         $this->assertFileExists($path);
 

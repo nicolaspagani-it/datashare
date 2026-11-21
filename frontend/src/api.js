@@ -58,7 +58,9 @@ export async function api(path, { method = 'GET', body, auth = true } = {}) {
   if (!res.ok) {
     // 401 sur une route protégée = token expiré/invalide -> retour à la connexion.
     // Mais pas pour /login : là, un 401 veut juste dire "mauvais mot de passe".
-    if (res.status === 401 && path !== '/login' && auth) onUnauthorized()
+    // Avec auth: 'optional' (route publique qui accepte un token, ex : l'envoi d'un fichier), c'est à
+    // l'appelant de réagir à un 401 : il peut réessayer en visiteur plutôt que de déconnecter.
+    if (res.status === 401 && path !== '/login' && auth === true) onUnauthorized()
 
     // On cherche un message lisible dans la réponse de Symfony :
     // "message" (nos erreurs), "detail" (erreurs standard), ou la liste "violations"

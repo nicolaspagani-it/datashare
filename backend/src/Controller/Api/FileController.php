@@ -18,6 +18,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -39,6 +40,7 @@ final class FileController extends AbstractController
         private readonly ShareTokenGenerator $tokens,
         private readonly PasswordHasherFactoryInterface $hasherFactory,
         private readonly ValidatorInterface $validator,
+        private readonly RateLimiterFactoryInterface $anonymousUploadLimiter,
         #[Autowire('%app.max_upload_size%')]
         private readonly int $maxUploadSize,
         #[Autowire('%app.front_url%')]
@@ -82,6 +84,7 @@ final class FileController extends AbstractController
     )]
     #[OA\Response(response: 201, description: 'Fichier envoyé. La réponse contient le lien de partage.', content: new OA\JsonContent(ref: '#/components/schemas/File'))]
     #[OA\Response(response: 401, description: 'Jeton JWT fourni mais invalide ou expiré (sans jeton, l\'envoi est anonyme).', content: new OA\JsonContent(ref: '#/components/schemas/AuthError'))]
+    #[OA\Response(response: 429, description: 'Visiteur non connecté : plus de 10 envois par heure depuis cette adresse IP.', content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'))]
     #[OA\Response(
         response: 422,
         description: 'Fichier absent, vide ou trop gros (champ `file`), durée invalide (champ `expiration`), mot de passe trop long (champ `password`).',
@@ -89,6 +92,20 @@ final class FileController extends AbstractController
     )]
     public function create(Request $request, #[CurrentUser] ?User $user): JsonResponse
     {
+        // Un visiteur anonyme est limité (10 envois par heure et par IP) : sinon n'importe qui pourrait remplir le disque.
+        if ($user === null) {
+            $limit = $this->anonymousUploadLimiter->create($request->getClientIp())->consume();
+            if (!$limit->isAccepted()) {
+                $message = 'Trop d\'envois depuis cette adresse. Connecte-toi ou réessaie plus tard.';
+
+                return $this->json(
+                    ['message' => $message, 'violations' => [['propertyPath' => 'file', 'title' => $message]]],
+                    Response::HTTP_TOO_MANY_REQUESTS,
+                    ['Retry-After' => (string) max(1, $limit->getRetryAfter()->getTimestamp() - time())],
+                );
+            }
+        }
+
         $upload = new UploadRequest(
             expiration: $request->request->getString('expiration'),
             password: $request->request->getString('password'),
@@ -183,11 +200,14 @@ final class FileController extends AbstractController
             return $this->json(['message' => 'Fichier introuvable.'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($shared->getStoredName() !== null) {
-            $this->storage->remove($shared->getStoredName());
-        }
+        // D'abord la ligne en base, ensuite le fichier : si la base échoue, rien n'est perdu ;
+        // si la suppression du fichier échoue, il ne reste qu'un fichier orphelin, sans conséquence.
+        $storedName = $shared->getStoredName();
         $this->em->remove($shared);
         $this->em->flush();
+        if ($storedName !== null) {
+            $this->storage->remove($storedName);
+        }
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }

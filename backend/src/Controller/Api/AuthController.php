@@ -4,6 +4,8 @@ namespace App\Controller\Api;
 
 use App\Dto\RegisterRequest;
 use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -47,23 +49,32 @@ final class AuthController extends AbstractController
         #[MapRequestPayload] RegisterRequest $payload,
         UserPasswordHasherInterface $hasher,
         EntityManagerInterface $em,
+        UserRepository $users,
     ): JsonResponse {
-        if ($em->getRepository(User::class)->findOneBy(['email' => $payload->email])) {
-            $message = 'Cette adresse email est déjà utilisée.';
+        // L'email est enregistré en minuscules : "Bob@x.com" et "bob@x.com" sont le même compte.
+        $email = mb_strtolower(trim($payload->email));
+        $message = 'Cette adresse email est déjà utilisée.';
 
-            // Même format que les erreurs de validation (violations) : le frontend
-            // affiche ainsi le message sous le champ email, comme pour les autres erreurs.
-            return $this->json([
-                'message' => $message,
-                'violations' => [['propertyPath' => 'email', 'title' => $message]],
-            ], Response::HTTP_CONFLICT);
+        // Même format que les erreurs de validation (violations) : le frontend
+        // affiche ainsi le message sous le champ email, comme pour les autres erreurs.
+        $conflict = fn (): JsonResponse => $this->json([
+            'message' => $message,
+            'violations' => [['propertyPath' => 'email', 'title' => $message]],
+        ], Response::HTTP_CONFLICT);
+
+        if ($users->findOneByEmail($email)) {
+            return $conflict();
         }
 
-        $user = (new User())->setEmail($payload->email);
+        $user = (new User())->setEmail($email);
         $user->setPassword($hasher->hashPassword($user, $payload->password));
 
-        $em->persist($user);
-        $em->flush();
+        try {
+            $em->persist($user);
+            $em->flush();
+        } catch (UniqueConstraintViolationException) {
+            return $conflict(); // deux inscriptions simultanées : la seconde est refusée proprement
+        }
 
         return $this->json(['id' => $user->getId(), 'email' => $user->getEmail()], Response::HTTP_CREATED);
     }

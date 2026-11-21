@@ -161,6 +161,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthError'
+        '429':
+          description: 'Visiteur non connecté : plus de 10 envois par heure depuis cette adresse IP.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
         '422':
           description: 'Fichier absent, vide ou trop gros (champ `file`), durée invalide (champ `expiration`), mot de passe trop long (champ `password`).'
           content:

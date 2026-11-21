@@ -51,6 +51,22 @@ class AuthControllerTest extends ApiTestCase
         $this->assertSame(1, $this->em->getRepository(User::class)->count([]));
     }
 
+    public function testEmailsAreCaseInsensitive(): void
+    {
+        $this->json('POST', '/api/register', ['email' => 'Bob@Example.com', 'password' => 'password123']);
+        $this->assertResponseStatusCodeSame(201);
+
+        // Même adresse avec une autre casse : refusée, et un seul compte existe (enregistré en minuscules).
+        $this->json('POST', '/api/register', ['email' => 'bob@example.COM', 'password' => 'password123']);
+        $this->assertResponseStatusCodeSame(409);
+        $this->assertSame(1, $this->em->getRepository(User::class)->count(['email' => 'bob@example.com']));
+
+        // La connexion accepte n'importe quelle casse.
+        $login = $this->json('POST', '/api/login', ['email' => 'BOB@example.com', 'password' => 'password123']);
+        $this->assertResponseIsSuccessful();
+        $this->assertArrayHasKey('token', $login);
+    }
+
     public function testRegisterRejectsAnInvalidEmail(): void
     {
         $data = $this->json('POST', '/api/register', ['email' => 'pas-un-email', 'password' => 'password123']);

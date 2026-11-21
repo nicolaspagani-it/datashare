@@ -165,8 +165,8 @@ Ce que le projet ne fait **pas** encore, du plus important au moins important :
 
 | # | Limite | Risque | Piste |
 |---|---|---|---|
-| 1 | **Aucune limite d'essais sur `POST /api/login`** (seule la récupération par lien est limitée) | un mot de passe de compte peut être attaqué par force brute | réutiliser le composant `rate-limiter` déjà installé (limiteur `login_throttling` du pare-feu) |
-| 2 | **Pas de quota** d'envois ni d'espace disque, y compris pour les visiteurs anonymes | quelqu'un peut remplir le disque avec des fichiers de 1 Go | quota par adresse IP et par compte, espace disque total plafonné |
+| 1 | ~~Aucune limite d'essais sur `POST /api/login`~~ **Corrigé** : `login_throttling` (5 échecs par 15 minutes, par email + adresse IP) | — | — |
+| 2 | **Quota partiel** : les visiteurs anonymes sont limités à 10 envois par heure et par IP, mais les comptes connectés et l'espace disque total ne sont pas plafonnés | un compte (gratuit) peut remplir le disque avec des fichiers de 1 Go | quota par compte, espace disque total plafonné |
 | 3 | **Jeton JWT conservé dans le `localStorage`** du navigateur | une faille XSS permettrait de le lire (le mot de passe de compte, lui, n'est jamais stocké) | cookie `HttpOnly` + `SameSite`, et en-tête `Content-Security-Policy` |
 | 4 | **Pas de révocation ni de renouvellement du jeton** (1 heure fixe) | un jeton volé reste valable jusqu'à son expiration ; la « déconnexion » oublie le jeton côté navigateur seulement | jeton court + jeton de renouvellement (`refresh token`), liste de jetons révoqués |
 | 5 | **HTTPS et en-têtes de sécurité non configurés** (HSTS, CSP, `X-Frame-Options`) | à régler au déploiement : sans HTTPS, jetons et mots de passe circulent en clair | terminaison TLS sur le serveur web ; en-têtes ajoutés par le serveur web ou un écouteur Symfony |
