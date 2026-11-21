@@ -150,14 +150,21 @@ et non l'adresse de téléchargement.
 | Contrôle | Résultat |
 |---|---|
 | `composer audit` (backend) | **aucune vulnérabilité connue** |
-| `npm audit --omit=dev` (frontend) | **8 alertes « high », toutes issues d'une seule cause** : `picomatch` ≤ 4.0.7, vulnérable à un déni de service par expression régulière ([GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)) |
+| `npm audit --omit=dev` (frontend, ce qui part en production) | **0 vulnérabilité** |
+| `npm audit` (frontend, outils de développement compris) | 5 alertes **modérées**, toutes dans la chaîne des tests : `@vue/test-utils` → `js-beautify` → `editorconfig` / `glob` → `minimatch` ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)) |
 
-À propos de l'alerte `picomatch` : elle est tirée par les **outils de construction** (Vite, vue-router). Elle n'est
-**pas présente dans le code envoyé au navigateur** (0 occurrence dans le dossier `dist/` après `npm run build`), et elle
-exigerait de fournir des motifs de fichiers piégés à l'outil de construction, ce qu'un visiteur ne peut pas faire. Le risque
-réel pour l'application est donc faible. **Aucune version corrigée n'existe à ce jour** (la 4.0.7 installée est la plus
-récente) : la « correction » proposée par `npm audit` serait un retour en arrière de vue-router vers une version
-majeure plus ancienne, que nous écartons. Piste : surveiller la sortie d'un correctif et relancer `npm audit`.
+Scan réalisé le 21 novembre 2026 (à relancer avant chaque livraison : voir [MAINTENANCE.md](MAINTENANCE.md)).
+
+À propos des 5 alertes modérées : elles concernent **uniquement les tests** (`@vue/test-utils`), jamais le code envoyé
+au navigateur ni le serveur (`npm audit --omit=dev` est à 0). Elles exigeraient de fournir des motifs de fichiers piégés
+à l'outil de test, ce qu'un visiteur ne peut pas faire. La « correction » proposée par `npm audit fix --force` est un
+**retour en arrière** vers `@vue/test-utils` 2.4.11 (changement non rétrocompatible) : nous l'écartons. Piste : mettre à
+jour `@vue/test-utils` dès qu'une version corrigée existe, puis relancer `npm audit`. L'ancienne alerte `picomatch`
+(déni de service par expression régulière, outils de construction) a disparu avec les mises à jour de dépendances.
+
+Versions en retard au moment du scan (mises à jour mineures, sans alerte de sécurité) : `doctrine/doctrine-bundle`
+3.4.1 → 3.4.2, `doctrine/orm` 3.7.7 → 3.8.0, `phpunit` 13.4.7 → 13.4.8, `vue` 3.5.45 → 3.5.46, `vitest` et
+`@vitest/coverage-v8` 5.1.0 → 5.1.1, `@vue/test-utils` 2.5.1 → 2.6.0.
 
 ## 9. Limites connues et pistes d'amélioration
 

@@ -6,7 +6,11 @@ et un mot de passe optionnel, et on obtient un lien de partage.
 - `backend/` : API Symfony 8 (PHP 8.4, PostgreSQL, authentification JWT)
 - `frontend/` : Vue 3 + Vite (proxy `/api` → `http://127.0.0.1:8000`)
 - `scripts/` : installation et configuration de la base de données
-- [`SECURITY.md`](SECURITY.md) : sécurité, gestion des accès et limites connues
+- [`SECURITY.md`](SECURITY.md) : sécurité, gestion des accès, scan des dépendances et limites connues
+- [`TESTING.md`](TESTING.md) : plan de tests, critères d'acceptation, couverture, instructions d'exécution
+- [`PERF.md`](PERF.md) : test de performance de l'API, budget de performance du frontend, interprétation
+- [`MAINTENANCE.md`](MAINTENANCE.md) : mises à jour, sauvegardes, purge, fréquences et risques
+- [`AI.md`](AI.md) : usage de l'IA dans le projet (outils, répartition du travail, contrôles, limites)
 - [`docs/openapi.yaml`](docs/openapi.yaml) : documentation OpenAPI de l'API (interface Swagger sur `/docs/`)
 
 ## Installation
@@ -100,7 +104,7 @@ cd ../frontend && npm ci
 | Un envoi de gros fichier est refusé | `upload_max_filesize` et `post_max_size` de `php.ini` doivent être d'au moins 1 Go |
 
 L'installation a été testée sur Windows 11 (PowerShell 5.1 et Git Bash) à partir d'une copie vierge du projet :
-installation, 181 tests PHPUnit et 250 tests Vitest au vert. `install.sh` n'a pas été exécuté sur un vrai Linux ou macOS.
+installation, 198 tests PHPUnit et 251 tests Vitest au vert. `install.sh` n'a pas été exécuté sur un vrai Linux ou macOS.
 
 ## Lancer en développement
 
