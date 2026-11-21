@@ -37,6 +37,8 @@ security:
     # Note: Only the *first* matching rule is applied
     access_control:
         - { path: ^/api/(login|register|health)$, roles: PUBLIC_ACCESS }
+        # La spécification OpenAPI (documentation de l'API) est publique
+        - { path: ^/api/doc\.json$, roles: PUBLIC_ACCESS }
         # Récupérer un fichier à partir de son lien est ouvert à tous, sans compte
         - { path: ^/api/shared/, roles: PUBLIC_ACCESS }
         # Envoyer un fichier est ouvert aux visiteurs non connectés (comme dans le design)

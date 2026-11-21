@@ -6,6 +6,7 @@ use App\Entity\SharedFile;
 use App\Repository\SharedFileRepository;
 use App\Service\DownloadTicket;
 use App\Service\FileStorage;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -44,7 +45,18 @@ final class SharedFileController extends AbstractController
     ) {
     }
 
+    /**
+     * Consulter un fichier partagé.
+     *
+     * Renvoie ce qu'il faut pour afficher la page de téléchargement : nom, taille, type, expiration, et si un
+     * mot de passe est nécessaire. Ne révèle jamais le propriétaire ni le mot de passe.
+     */
     #[Route('/api/shared/{token}', name: 'api_shared_show', methods: ['GET'], requirements: ['token' => self::TOKEN])]
+    #[OA\Tag(name: 'Liens de partage')]
+    #[OA\Parameter(name: 'token', in: 'path', required: true, description: 'Partie aléatoire du lien de partage (champ `token` ou fin de l\'`url`).', schema: new OA\Schema(type: 'string', pattern: '^[A-Za-z0-9]{1,16}$', example: 'UhGyr4Kd'))]
+    #[OA\Response(response: 200, description: 'Les informations du fichier.', content: new OA\JsonContent(ref: '#/components/schemas/SharedFileInfo'))]
+    #[OA\Response(response: 404, description: 'Ce lien n\'existe pas.', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
+    #[OA\Response(response: 410, description: 'Le fichier a expiré : il n\'est plus stocké.', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
     public function show(string $token): JsonResponse
     {
         $file = $this->findAvailable($token);
@@ -64,7 +76,31 @@ final class SharedFileController extends AbstractController
         ]);
     }
 
+    /**
+     * Déverrouiller un fichier.
+     *
+     * Vérifie le mot de passe et renvoie l'URL de téléchargement. Pour un fichier **protégé**, cette URL contient
+     * un ticket signé, valable **10 minutes** et propre à ce fichier. Pour un fichier sans mot de passe, l'URL est
+     * renvoyée directement (le corps de la requête peut être vide).
+     *
+     * Les essais sont limités : **5 par tranche de 15 minutes**, par lien et par adresse IP. Un essai réussi
+     * remet le compteur à zéro.
+     */
     #[Route('/api/shared/{token}/unlock', name: 'api_shared_unlock', methods: ['POST'], requirements: ['token' => self::TOKEN])]
+    #[OA\Tag(name: 'Liens de partage')]
+    #[OA\Parameter(name: 'token', in: 'path', required: true, description: 'Partie aléatoire du lien de partage.', schema: new OA\Schema(type: 'string', pattern: '^[A-Za-z0-9]{1,16}$', example: 'UhGyr4Kd'))]
+    #[OA\RequestBody(required: false, content: new OA\JsonContent(ref: '#/components/schemas/UnlockRequest'))]
+    #[OA\Response(response: 200, description: 'Mot de passe correct (ou fichier sans mot de passe) : l\'URL pour télécharger.', content: new OA\JsonContent(ref: '#/components/schemas/DownloadUrl'))]
+    #[OA\Response(response: 403, description: 'Mot de passe incorrect (erreur rattachée au champ `password`).', content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'))]
+    #[OA\Response(response: 404, description: 'Ce lien n\'existe pas.', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
+    #[OA\Response(response: 410, description: 'Le fichier a expiré : il n\'est plus stocké.', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
+    #[OA\Response(response: 422, description: 'Mot de passe non fourni pour un fichier protégé.', content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'))]
+    #[OA\Response(
+        response: 429,
+        description: 'Trop de mots de passe essayés : réessayer plus tard.',
+        headers: [new OA\Header(header: 'Retry-After', description: 'Secondes à attendre avant de réessayer.', schema: new OA\Schema(type: 'integer', example: 897))],
+        content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'),
+    )]
     public function unlock(string $token, Request $request): JsonResponse
     {
         $file = $this->findAvailable($token);
@@ -106,7 +142,33 @@ final class SharedFileController extends AbstractController
         return $this->json(['downloadUrl' => $this->downloadPath($file, $this->tickets->issue($file))]);
     }
 
+    /**
+     * Télécharger le fichier.
+     *
+     * Envoie le fichier en flux, en pièce jointe (`Content-Disposition: attachment`), avec son nom d'origine.
+     * La reprise d'un téléchargement interrompu est possible avec l'en-tête `Range`.
+     *
+     * Pour un fichier **protégé**, il faut le paramètre `ticket` obtenu par `POST /api/shared/{token}/unlock`.
+     * L'expiration est vérifiée à chaque appel, même avec un ticket valide.
+     */
     #[Route('/api/shared/{token}/download', name: 'api_shared_download', methods: ['GET'], requirements: ['token' => self::TOKEN])]
+    #[OA\Tag(name: 'Liens de partage')]
+    #[OA\Parameter(name: 'token', in: 'path', required: true, description: 'Partie aléatoire du lien de partage.', schema: new OA\Schema(type: 'string', pattern: '^[A-Za-z0-9]{1,16}$', example: 'UhGyr4Kd'))]
+    #[OA\Parameter(name: 'ticket', in: 'query', required: false, description: 'Ticket signé obtenu avec `unlock` (obligatoire pour un fichier protégé).', schema: new OA\Schema(type: 'string', example: '1794742332.f7bdcff1...'))]
+    #[OA\Parameter(name: 'Range', in: 'header', required: false, description: 'Pour reprendre un téléchargement, par exemple `bytes=0-1023`.', schema: new OA\Schema(type: 'string', example: 'bytes=0-1023'))]
+    #[OA\Response(
+        response: 200,
+        description: 'Le contenu du fichier.',
+        headers: [
+            new OA\Header(header: 'Content-Disposition', description: 'Toujours `attachment`, avec le nom d\'origine du fichier.', schema: new OA\Schema(type: 'string', example: 'attachment; filename=vacances.jpg')),
+            new OA\Header(header: 'Content-Length', description: 'Taille en octets.', schema: new OA\Schema(type: 'integer')),
+        ],
+        content: new OA\MediaType(mediaType: 'application/octet-stream', schema: new OA\Schema(type: 'string', format: 'binary')),
+    )]
+    #[OA\Response(response: 206, description: 'Une partie du fichier (réponse à un en-tête `Range`).', content: new OA\MediaType(mediaType: 'application/octet-stream', schema: new OA\Schema(type: 'string', format: 'binary')))]
+    #[OA\Response(response: 403, description: 'Fichier protégé : ticket absent, invalide ou périmé.', content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'))]
+    #[OA\Response(response: 404, description: 'Ce lien n\'existe pas.', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
+    #[OA\Response(response: 410, description: 'Le fichier a expiré : il n\'est plus stocké.', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
     public function download(string $token, Request $request): Response
     {
         $file = $this->findAvailable($token);

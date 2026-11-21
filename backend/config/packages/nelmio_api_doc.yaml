@@ -1,0 +1,159 @@
+# Documentation OpenAPI de l'API (NelmioApiDocBundle).
+#   - spécification JSON : GET /api/doc.json
+#   - interface Swagger  : /docs/  (page statique public/docs/index.html)
+#   - export en fichier  : composer docs  (écrit docs/openapi.yaml à la racine du dépôt)
+#
+# Les routes et leurs réponses sont décrites par des attributs #[OA\...] sur les contrôleurs.
+# Ce fichier contient ce qui est commun : informations générales, authentification, schémas partagés,
+# et la route /api/login (gérée par le pare-feu de sécurité, donc sans contrôleur).
+nelmio_api_doc:
+    documentation:
+        info:
+            title: DataShare API
+            version: 0.1.0
+            description: |
+                API de **partage de fichiers par lien** : on envoie un fichier (1 Go maximum) avec une durée de
+                conservation de 1 à 7 jours et un mot de passe facultatif, et on obtient un lien à partager.
+
+                ## Authentification
+                Les routes marquées d'un cadenas demandent un **jeton JWT** :
+                1. créer un compte avec `POST /api/register`, puis se connecter avec `POST /api/login` ;
+                2. copier le `token` reçu et cliquer sur **Authorize** (en haut à droite) pour le coller.
+
+                Le jeton est valable 1 heure. Les routes de récupération par lien (`/api/shared/...`) et l'envoi d'un
+                fichier (`POST /api/files`) sont **publiques** : un visiteur sans compte peut les utiliser.
+
+                ## Erreurs
+                Les erreurs de validation (code 422) renvoient la liste des champs en erreur dans `violations`,
+                avec le nom du champ (`propertyPath`) et un message en français prêt à être affiché.
+        tags:
+            - { name: Système, description: "État du service" }
+            - { name: Compte, description: "Inscription, connexion et profil" }
+            - { name: Mes fichiers, description: "Envoyer, lister et supprimer ses fichiers" }
+            - { name: Liens de partage, description: "Routes publiques : consulter et télécharger un fichier à partir de son lien" }
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+                    description: Jeton reçu par `POST /api/login`.
+            schemas:
+                Error:
+                    type: object
+                    description: Erreur simple, avec un message lisible.
+                    required: [message]
+                    properties:
+                        message: { type: string, example: "Ce lien n'existe pas." }
+                AuthError:
+                    type: object
+                    description: Erreur d'authentification (jeton absent, invalide ou expiré).
+                    required: [code, message]
+                    properties:
+                        code: { type: integer, example: 401 }
+                        message: { type: string, example: JWT Token not found }
+                Violation:
+                    type: object
+                    description: Une erreur sur un champ.
+                    required: [propertyPath, title]
+                    properties:
+                        propertyPath: { type: string, description: Nom du champ concerné, example: password }
+                        title: { type: string, description: Message en français, example: 'Le mot de passe est trop court : il doit contenir au moins 8 caractères.' }
+                ValidationError:
+                    type: object
+                    description: Erreur de validation (422) ou de règle métier avec les champs concernés.
+                    required: [violations]
+                    properties:
+                        title: { type: string, example: Validation Failed }
+                        status: { type: integer, example: 422 }
+                        message: { type: string, description: "Présent pour les erreurs 403, 409 et 429" }
+                        violations:
+                            type: array
+                            items: { $ref: '#/components/schemas/Violation' }
+                User:
+                    type: object
+                    required: [id, email, roles]
+                    properties:
+                        id: { type: integer, example: 1 }
+                        email: { type: string, format: email, example: claire@example.com }
+                        roles: { type: array, items: { type: string }, example: [ROLE_USER] }
+                Credentials:
+                    type: object
+                    required: [email, password]
+                    properties:
+                        email: { type: string, format: email, example: claire@example.com }
+                        password: { type: string, format: password, example: mon-mot-de-passe }
+                Token:
+                    type: object
+                    required: [token]
+                    properties:
+                        token: { type: string, description: "Jeton JWT à envoyer dans l'en-tête `Authorization: Bearer <token>`", example: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9... }
+                File:
+                    type: object
+                    description: Un fichier partagé, tel que renvoyé à son propriétaire.
+                    required: [id, token, name, size, type, url, protected, expired, createdAt, expiresAt]
+                    properties:
+                        id: { type: integer, example: 12 }
+                        token: { type: string, description: Partie aléatoire du lien de partage (8 caractères), example: UhGyr4Kd }
+                        name: { type: string, description: Nom d'origine du fichier, example: vacances.jpg }
+                        size: { type: integer, description: Taille en octets, example: 2600000 }
+                        type: { type: string, description: Type MIME détecté d'après le contenu, example: image/jpeg }
+                        url: { type: string, description: Lien de partage complet, example: 'http://localhost:5173/UhGyr4Kd' }
+                        protected: { type: boolean, description: Le fichier est protégé par un mot de passe }
+                        expired: { type: boolean, description: La date d'expiration est dépassée }
+                        createdAt: { type: string, format: date-time }
+                        expiresAt: { type: string, format: date-time }
+                SharedFileInfo:
+                    type: object
+                    description: Informations publiques d'un fichier, pour afficher la page de téléchargement.
+                    required: [token, name, size, type, protected, expiresAt]
+                    properties:
+                        token: { type: string, example: UhGyr4Kd }
+                        name: { type: string, example: vacances.jpg }
+                        size: { type: integer, description: Taille en octets, example: 2600000 }
+                        type: { type: string, example: image/jpeg }
+                        protected: { type: boolean, description: Un mot de passe est nécessaire pour télécharger }
+                        expiresAt: { type: string, format: date-time }
+                UnlockRequest:
+                    type: object
+                    properties:
+                        password: { type: string, format: password, description: Obligatoire si le fichier est protégé, example: mon-secret }
+                DownloadUrl:
+                    type: object
+                    required: [downloadUrl]
+                    properties:
+                        downloadUrl:
+                            type: string
+                            description: URL à ouvrir pour télécharger. Pour un fichier protégé, elle contient un ticket signé valable 10 minutes.
+                            example: /api/shared/UhGyr4Kd/download?ticket=1794742332.f7bdcff1...
+        paths:
+            # La connexion est gérée par le pare-feu de sécurité (json_login) : il n'y a pas de contrôleur à annoter.
+            /api/login:
+                post:
+                    tags: [Compte]
+                    summary: Se connecter
+                    description: Vérifie l'email et le mot de passe, et renvoie un jeton JWT valable 1 heure.
+                    operationId: login
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema: { $ref: '#/components/schemas/Credentials' }
+                    responses:
+                        '200':
+                            description: Connexion réussie.
+                            content:
+                                application/json:
+                                    schema: { $ref: '#/components/schemas/Token' }
+                        '400':
+                            description: Email ou mot de passe absent du corps de la requête.
+                        '401':
+                            description: Identifiants invalides.
+                            content:
+                                application/json:
+                                    schema: { $ref: '#/components/schemas/AuthError' }
+                                    example: { code: 401, message: Identifiants invalides. }
+    areas:
+        default:
+            # Toutes les routes /api, sauf celles de la documentation elle-même
+            path_patterns: ['^/api(?!/doc)']

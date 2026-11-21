@@ -260,6 +260,7 @@ Pour lancer l'application (2 terminaux) :
   1. backend  : cd backend ; php -S 127.0.0.1:8000 -t public      (ou : symfony serve --no-tls)
   2. frontend : cd frontend ; npm run dev
 Puis ouvre http://localhost:5173 et crée un compte.
+La documentation de l'API (Swagger) est sur http://127.0.0.1:8000/docs/ quand le backend tourne.
 
 À planifier (supprime du disque les fichiers expirés), par exemple toutes les heures :
   cd backend ; php bin/console app:files:purge-expired

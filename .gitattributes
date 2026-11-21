@@ -1,3 +1,6 @@
 # Les scripts shell doivent garder des fins de ligne Unix (LF) : avec des CRLF (Windows),
 # bash échoue avec "\r : commande introuvable".
 *.sh text eol=lf
+
+# Le fichier exporté par "composer docs" : fins de ligne Unix, sinon il change à chaque export sous Windows.
+docs/openapi.yaml text eol=lf

@@ -1,0 +1,639 @@
+openapi: 3.0.0
+info:
+  title: 'DataShare API'
+  description: "API de **partage de fichiers par lien** : on envoie un fichier (1 Go maximum) avec une durée de\nconservation de 1 à 7 jours et un mot de passe facultatif, et on obtient un lien à partager.\n\n## Authentification\nLes routes marquées d'un cadenas demandent un **jeton JWT** :\n1. créer un compte avec `POST /api/register`, puis se connecter avec `POST /api/login` ;\n2. copier le `token` reçu et cliquer sur **Authorize** (en haut à droite) pour le coller.\n\nLe jeton est valable 1 heure. Les routes de récupération par lien (`/api/shared/...`) et l'envoi d'un\nfichier (`POST /api/files`) sont **publiques** : un visiteur sans compte peut les utiliser.\n\n## Erreurs\nLes erreurs de validation (code 422) renvoient la liste des champs en erreur dans `violations`,\navec le nom du champ (`propertyPath`) et un message en français prêt à être affiché.\n"
+  version: 0.1.0
+paths:
+  /api/login:
+    post:
+      tags:
+        - Compte
+      summary: 'Se connecter'
+      description: "Vérifie l'email et le mot de passe, et renvoie un jeton JWT valable 1 heure."
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: 'Connexion réussie.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '400':
+          description: 'Email ou mot de passe absent du corps de la requête.'
+        '401':
+          description: 'Identifiants invalides.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+              example:
+                code: 401
+                message: 'Identifiants invalides.'
+  /api/register:
+    post:
+      tags:
+        - Compte
+      summary: 'Créer un compte.'
+      description: "Crée un utilisateur avec son email et son mot de passe (haché avant d'être stocké). L'inscription ne\nconnecte pas : il faut ensuite appeler `POST /api/login`."
+      operationId: post_api_register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: 'Compte créé.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  id: { type: integer, example: 1 }
+                  email: { type: string, format: email, example: claire@example.com }
+                type: object
+        '409':
+          description: 'Cette adresse email est déjà utilisée (erreur rattachée au champ `email`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '422':
+          description: 'Email ou mot de passe invalide : chaque erreur est rattachée à son champ.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+  /api/me:
+    get:
+      tags:
+        - Compte
+      summary: 'Mon profil.'
+      description: "Renvoie l'utilisateur correspondant au jeton JWT. Sert aussi à vérifier qu'un jeton est encore valable."
+      operationId: get_api_me
+      responses:
+        '200':
+          description: "L'utilisateur connecté."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: 'Jeton absent, invalide ou expiré.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+      security:
+        -
+          Bearer: []
+  /api/files:
+    get:
+      tags:
+        - 'Mes fichiers'
+      summary: 'Lister mes fichiers.'
+      description: "Les fichiers envoyés par l'utilisateur connecté, du plus récent au plus ancien, y compris ceux qui ont\nexpiré (`expired: true`, contenu supprimé du disque)."
+      operationId: get_api_files_list
+      responses:
+        '200':
+          description: "La liste de mes fichiers (vide si je n'en ai pas)."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+        '401':
+          description: 'Jeton absent, invalide ou expiré.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+      security:
+        -
+          Bearer: []
+    post:
+      tags:
+        - 'Mes fichiers'
+      summary: 'Envoyer un fichier.'
+      description: "Route **publique** : un visiteur sans compte peut envoyer un fichier. Si un jeton JWT valide est fourni,\nle fichier est rattaché à l'utilisateur et apparaît dans sa liste (`GET /api/files`) ; un jeton invalide\nest refusé (401).\n\nLa requête est de type `multipart/form-data`. Le fichier ne doit pas dépasser **1 Go** et ne doit pas\nêtre vide. Le mot de passe facultatif n'est jamais stocké en clair : seul son hash l'est.\n\nLa réponse contient le lien de partage (`url`)."
+      operationId: post_api_files_create
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+                - expiration
+              properties:
+                file:
+                  description: 'Le fichier à partager (1 Go maximum, non vide).'
+                  type: string
+                  format: binary
+                expiration:
+                  description: 'Durée de conservation en jours : de `1` (une journée) à `7` (une semaine).'
+                  type: string
+                  example: '3'
+                  enum: ['1', '2', '3', '4', '5', '6', '7']
+                password:
+                  description: 'Mot de passe facultatif, à saisir pour télécharger le fichier.'
+                  type: string
+                  format: password
+                  maxLength: 4096
+              type: object
+      responses:
+        '201':
+          description: 'Fichier envoyé. La réponse contient le lien de partage.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '401':
+          description: "Jeton JWT fourni mais invalide ou expiré (sans jeton, l'envoi est anonyme)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '422':
+          description: 'Fichier absent, vide ou trop gros (champ `file`), durée invalide (champ `expiration`), mot de passe trop long (champ `password`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+  '/api/files/{id}':
+    delete:
+      tags:
+        - 'Mes fichiers'
+      summary: 'Supprimer un de mes fichiers.'
+      description: "Supprime la ligne et le contenu du disque : le lien de partage cesse de fonctionner. Seul le propriétaire\npeut supprimer son fichier."
+      operationId: delete_api_files_delete
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'Identifiant du fichier (champ `id` de la liste).'
+          required: true
+          schema:
+            type: integer
+            pattern: \d+
+            example: 12
+      responses:
+        '204':
+          description: 'Fichier supprimé.'
+        '401':
+          description: 'Jeton absent, invalide ou expiré.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '404':
+          description: "Fichier introuvable, ou appartenant à quelqu'un d'autre (on ne révèle pas son existence)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        -
+          Bearer: []
+  /api/health:
+    get:
+      tags:
+        - Système
+      summary: 'Vérifier que le service répond.'
+      description: "Route publique, utile pour surveiller l'application."
+      operationId: get_api_health
+      responses:
+        '200':
+          description: 'Le service répond.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  app: { type: string, example: datashare }
+                  status: { type: string, example: ok }
+                type: object
+  '/api/shared/{token}':
+    get:
+      tags:
+        - 'Liens de partage'
+      summary: 'Consulter un fichier partagé.'
+      description: "Renvoie ce qu'il faut pour afficher la page de téléchargement : nom, taille, type, expiration, et si un\nmot de passe est nécessaire. Ne révèle jamais le propriétaire ni le mot de passe."
+      operationId: get_api_shared_show
+      parameters:
+        -
+          name: token
+          in: path
+          description: "Partie aléatoire du lien de partage (champ `token` ou fin de l'`url`)."
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9]{1,16}$'
+            example: UhGyr4Kd
+      responses:
+        '200':
+          description: 'Les informations du fichier.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFileInfo'
+        '404':
+          description: "Ce lien n'existe pas."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: "Le fichier a expiré : il n'est plus stocké."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  '/api/shared/{token}/unlock':
+    post:
+      tags:
+        - 'Liens de partage'
+      summary: 'Déverrouiller un fichier.'
+      description: "Vérifie le mot de passe et renvoie l'URL de téléchargement. Pour un fichier **protégé**, cette URL contient\nun ticket signé, valable **10 minutes** et propre à ce fichier. Pour un fichier sans mot de passe, l'URL est\nrenvoyée directement (le corps de la requête peut être vide).\n\nLes essais sont limités : **5 par tranche de 15 minutes**, par lien et par adresse IP. Un essai réussi\nremet le compteur à zéro."
+      operationId: post_api_shared_unlock
+      parameters:
+        -
+          name: token
+          in: path
+          description: 'Partie aléatoire du lien de partage.'
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9]{1,16}$'
+            example: UhGyr4Kd
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnlockRequest'
+      responses:
+        '200':
+          description: "Mot de passe correct (ou fichier sans mot de passe) : l'URL pour télécharger."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadUrl'
+        '403':
+          description: 'Mot de passe incorrect (erreur rattachée au champ `password`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: "Ce lien n'existe pas."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: "Le fichier a expiré : il n'est plus stocké."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Mot de passe non fourni pour un fichier protégé.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          description: 'Trop de mots de passe essayés : réessayer plus tard.'
+          headers:
+            Retry-After:
+              description: 'Secondes à attendre avant de réessayer.'
+              schema:
+                type: integer
+                example: 897
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+  '/api/shared/{token}/download':
+    get:
+      tags:
+        - 'Liens de partage'
+      summary: 'Télécharger le fichier.'
+      description: "Envoie le fichier en flux, en pièce jointe (`Content-Disposition: attachment`), avec son nom d'origine.\nLa reprise d'un téléchargement interrompu est possible avec l'en-tête `Range`.\n\nPour un fichier **protégé**, il faut le paramètre `ticket` obtenu par `POST /api/shared/{token}/unlock`.\nL'expiration est vérifiée à chaque appel, même avec un ticket valide."
+      operationId: get_api_shared_download
+      parameters:
+        -
+          name: token
+          in: path
+          description: 'Partie aléatoire du lien de partage.'
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9]{1,16}$'
+            example: UhGyr4Kd
+        -
+          name: ticket
+          in: query
+          description: 'Ticket signé obtenu avec `unlock` (obligatoire pour un fichier protégé).'
+          required: false
+          schema:
+            type: string
+            example: 1794742332.f7bdcff1...
+        -
+          name: Range
+          in: header
+          description: 'Pour reprendre un téléchargement, par exemple `bytes=0-1023`.'
+          required: false
+          schema:
+            type: string
+            example: bytes=0-1023
+      responses:
+        '200':
+          description: 'Le contenu du fichier.'
+          headers:
+            Content-Disposition:
+              description: "Toujours `attachment`, avec le nom d'origine du fichier."
+              schema:
+                type: string
+                example: 'attachment; filename=vacances.jpg'
+            Content-Length:
+              description: 'Taille en octets.'
+              schema:
+                type: integer
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: 'Une partie du fichier (réponse à un en-tête `Range`).'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: 'Fichier protégé : ticket absent, invalide ou périmé.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: "Ce lien n'existe pas."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: "Le fichier a expiré : il n'est plus stocké."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Error:
+      description: 'Erreur simple, avec un message lisible.'
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "Ce lien n'existe pas."
+      type: object
+    AuthError:
+      description: "Erreur d'authentification (jeton absent, invalide ou expiré)."
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          example: 401
+        message:
+          type: string
+          example: 'JWT Token not found'
+      type: object
+    Violation:
+      description: 'Une erreur sur un champ.'
+      required:
+        - propertyPath
+        - title
+      properties:
+        propertyPath:
+          description: 'Nom du champ concerné'
+          type: string
+          example: password
+        title:
+          description: 'Message en français'
+          type: string
+          example: 'Le mot de passe est trop court : il doit contenir au moins 8 caractères.'
+      type: object
+    ValidationError:
+      description: 'Erreur de validation (422) ou de règle métier avec les champs concernés.'
+      required:
+        - violations
+      properties:
+        title:
+          type: string
+          example: 'Validation Failed'
+        status:
+          type: integer
+          example: 422
+        message:
+          description: 'Présent pour les erreurs 403, 409 et 429'
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+      type: object
+    User:
+      required:
+        - id
+        - email
+        - roles
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: claire@example.com
+        roles:
+          type: array
+          items:
+            type: string
+          example:
+            - ROLE_USER
+      type: object
+    Credentials:
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: claire@example.com
+        password:
+          type: string
+          format: password
+          example: mon-mot-de-passe
+      type: object
+    Token:
+      required:
+        - token
+      properties:
+        token:
+          description: "Jeton JWT à envoyer dans l'en-tête `Authorization: Bearer <token>`"
+          type: string
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+      type: object
+    File:
+      description: 'Un fichier partagé, tel que renvoyé à son propriétaire.'
+      required:
+        - id
+        - token
+        - name
+        - size
+        - type
+        - url
+        - protected
+        - expired
+        - createdAt
+        - expiresAt
+      properties:
+        id:
+          type: integer
+          example: 12
+        token:
+          description: 'Partie aléatoire du lien de partage (8 caractères)'
+          type: string
+          example: UhGyr4Kd
+        name:
+          description: "Nom d'origine du fichier"
+          type: string
+          example: vacances.jpg
+        size:
+          description: 'Taille en octets'
+          type: integer
+          example: 2600000
+        type:
+          description: "Type MIME détecté d'après le contenu"
+          type: string
+          example: image/jpeg
+        url:
+          description: 'Lien de partage complet'
+          type: string
+          example: 'http://localhost:5173/UhGyr4Kd'
+        protected:
+          description: 'Le fichier est protégé par un mot de passe'
+          type: boolean
+        expired:
+          description: "La date d'expiration est dépassée"
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+      type: object
+    SharedFileInfo:
+      description: "Informations publiques d'un fichier, pour afficher la page de téléchargement."
+      required:
+        - token
+        - name
+        - size
+        - type
+        - protected
+        - expiresAt
+      properties:
+        token:
+          type: string
+          example: UhGyr4Kd
+        name:
+          type: string
+          example: vacances.jpg
+        size:
+          description: 'Taille en octets'
+          type: integer
+          example: 2600000
+        type:
+          type: string
+          example: image/jpeg
+        protected:
+          description: 'Un mot de passe est nécessaire pour télécharger'
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+      type: object
+    UnlockRequest:
+      properties:
+        password:
+          description: 'Obligatoire si le fichier est protégé'
+          type: string
+          format: password
+          example: mon-secret
+      type: object
+    DownloadUrl:
+      required:
+        - downloadUrl
+      properties:
+        downloadUrl:
+          description: 'URL à ouvrir pour télécharger. Pour un fichier protégé, elle contient un ticket signé valable 10 minutes.'
+          type: string
+          example: '/api/shared/UhGyr4Kd/download?ticket=1794742332.f7bdcff1...'
+      type: object
+    RegisterRequest:
+      description: "Corps de la requête d'inscription."
+      required:
+        - email
+        - password
+      properties:
+        email:
+          description: "Adresse email du compte (unique : elle sert d'identifiant de connexion)."
+          type: string
+          format: email
+          example: claire@example.com
+          default: ''
+          maxLength: 180
+        password:
+          description: "Mot de passe : 8 caractères au minimum. Il est haché avant d'être stocké."
+          type: string
+          format: password
+          example: mon-mot-de-passe
+          default: ''
+          maxLength: 4096
+          minLength: 8
+      type: object
+  securitySchemes:
+    Bearer:
+      type: http
+      description: 'Jeton reçu par `POST /api/login`.'
+      bearerFormat: JWT
+      scheme: bearer
+tags:
+  -
+    name: Système
+    description: 'État du service'
+  -
+    name: Compte
+    description: 'Inscription, connexion et profil'
+  -
+    name: 'Mes fichiers'
+    description: 'Envoyer, lister et supprimer ses fichiers'
+  -
+    name: 'Liens de partage'
+    description: 'Routes publiques : consulter et télécharger un fichier à partir de son lien'
+

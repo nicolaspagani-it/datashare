@@ -9,6 +9,8 @@ use App\Repository\SharedFileRepository;
 use App\Service\FileStorage;
 use App\Service\ShareTokenGenerator;
 use Doctrine\ORM\EntityManagerInterface;
+use Nelmio\ApiDocBundle\Attribute\Security;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -44,7 +46,47 @@ final class FileController extends AbstractController
     ) {
     }
 
+    /**
+     * Envoyer un fichier.
+     *
+     * Route **publique** : un visiteur sans compte peut envoyer un fichier. Si un jeton JWT valide est fourni,
+     * le fichier est rattaché à l'utilisateur et apparaît dans sa liste (`GET /api/files`) ; un jeton invalide
+     * est refusé (401).
+     *
+     * La requête est de type `multipart/form-data`. Le fichier ne doit pas dépasser **1 Go** et ne doit pas
+     * être vide. Le mot de passe facultatif n'est jamais stocké en clair : seul son hash l'est.
+     *
+     * La réponse contient le lien de partage (`url`).
+     */
     #[Route('/api/files', name: 'api_files_create', methods: ['POST'])]
+    #[OA\Tag(name: 'Mes fichiers')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: 'multipart/form-data',
+            schema: new OA\Schema(
+                required: ['file', 'expiration'],
+                properties: [
+                    new OA\Property(property: 'file', type: 'string', format: 'binary', description: 'Le fichier à partager (1 Go maximum, non vide).'),
+                    new OA\Property(
+                        property: 'expiration',
+                        type: 'string',
+                        enum: ['1', '2', '3', '4', '5', '6', '7'],
+                        example: '3',
+                        description: 'Durée de conservation en jours : de `1` (une journée) à `7` (une semaine).',
+                    ),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', maxLength: 4096, description: 'Mot de passe facultatif, à saisir pour télécharger le fichier.'),
+                ],
+            ),
+        ),
+    )]
+    #[OA\Response(response: 201, description: 'Fichier envoyé. La réponse contient le lien de partage.', content: new OA\JsonContent(ref: '#/components/schemas/File'))]
+    #[OA\Response(response: 401, description: 'Jeton JWT fourni mais invalide ou expiré (sans jeton, l\'envoi est anonyme).', content: new OA\JsonContent(ref: '#/components/schemas/AuthError'))]
+    #[OA\Response(
+        response: 422,
+        description: 'Fichier absent, vide ou trop gros (champ `file`), durée invalide (champ `expiration`), mot de passe trop long (champ `password`).',
+        content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'),
+    )]
     public function create(Request $request, #[CurrentUser] ?User $user): JsonResponse
     {
         $upload = new UploadRequest(
@@ -99,13 +141,39 @@ final class FileController extends AbstractController
         return $this->json($this->serialize($shared), Response::HTTP_CREATED);
     }
 
+    /**
+     * Lister mes fichiers.
+     *
+     * Les fichiers envoyés par l'utilisateur connecté, du plus récent au plus ancien, y compris ceux qui ont
+     * expiré (`expired: true`, contenu supprimé du disque).
+     */
     #[Route('/api/files', name: 'api_files_list', methods: ['GET'])]
+    #[OA\Tag(name: 'Mes fichiers')]
+    #[Security(name: 'Bearer')]
+    #[OA\Response(
+        response: 200,
+        description: 'La liste de mes fichiers (vide si je n\'en ai pas).',
+        content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/File')),
+    )]
+    #[OA\Response(response: 401, description: 'Jeton absent, invalide ou expiré.', content: new OA\JsonContent(ref: '#/components/schemas/AuthError'))]
     public function list(#[CurrentUser] User $user): JsonResponse
     {
         return $this->json(array_map($this->serialize(...), $this->files->findByOwner($user)));
     }
 
+    /**
+     * Supprimer un de mes fichiers.
+     *
+     * Supprime la ligne et le contenu du disque : le lien de partage cesse de fonctionner. Seul le propriétaire
+     * peut supprimer son fichier.
+     */
     #[Route('/api/files/{id}', name: 'api_files_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    #[OA\Tag(name: 'Mes fichiers')]
+    #[Security(name: 'Bearer')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'Identifiant du fichier (champ `id` de la liste).', schema: new OA\Schema(type: 'integer', example: 12))]
+    #[OA\Response(response: 204, description: 'Fichier supprimé.')]
+    #[OA\Response(response: 401, description: 'Jeton absent, invalide ou expiré.', content: new OA\JsonContent(ref: '#/components/schemas/AuthError'))]
+    #[OA\Response(response: 404, description: 'Fichier introuvable, ou appartenant à quelqu\'un d\'autre (on ne révèle pas son existence).', content: new OA\JsonContent(ref: '#/components/schemas/Error'))]
     public function delete(int $id, #[CurrentUser] User $user): Response
     {
         $shared = $this->files->find($id);

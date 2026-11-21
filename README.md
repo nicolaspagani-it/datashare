@@ -6,6 +6,8 @@ et un mot de passe optionnel, et on obtient un lien de partage.
 - `backend/` : API Symfony 8 (PHP 8.4, PostgreSQL, authentification JWT)
 - `frontend/` : Vue 3 + Vite (proxy `/api` → `http://127.0.0.1:8000`)
 - `scripts/` : installation et configuration de la base de données
+- [`SECURITY.md`](SECURITY.md) : sécurité, gestion des accès et limites connues
+- [`docs/openapi.yaml`](docs/openapi.yaml) : documentation OpenAPI de l'API (interface Swagger sur `/docs/`)
 
 ## Installation
 
@@ -90,6 +92,7 @@ cd ../frontend && npm ci
 |---|---|
 | « Extensions PHP manquantes » | active-les dans `php.ini` (retire le `;` devant `extension=pdo_pgsql`, etc.), puis relance |
 | « Impossible de se connecter à PostgreSQL » | le serveur n'est pas démarré, ou l'hôte, le port, l'utilisateur ou le mot de passe sont faux |
+| « le rôle "xxx" n'existe pas » | un **autre** serveur PostgreSQL répond sur le port 5432 (cas typique avec **Laragon** : il démarre son propre serveur, avec un seul utilisateur, celui de ta session Windows, et sans ta base). Vérifie quel serveur tourne (`Get-NetTCPConnection -LocalPort 5432`, puis la ligne de commande du processus `postgres.exe` : l'option `-D` donne son dossier de données), n'en garde **qu'un** sur ce port, et utilise `-DbUser` avec un utilisateur qui existe dans CE serveur |
 | `non-existent parameter "40ss"` | un `%` du mot de passe dans `DATABASE_URL` n'est pas doublé (`%%40`). Les scripts le font seuls ; à la main, encode le mot de passe puis double chaque `%` |
 | La connexion répond 500 « private key/passphrase » | `JWT_PASSPHRASE` ne correspond plus aux clés : relance l'installation avec `-Force` / `--force` (régénère les deux) |
 | « Des programmes Node.js utilisent encore le dossier frontend » | un `npm run dev` (ou l'extension Vitest de VS Code) tourne encore : arrête-le (Ctrl+C), puis relance l'installation. Sous Windows, il verrouille `frontend\node_modules` |
@@ -108,6 +111,28 @@ cd backend && symfony serve --no-tls -d   # ou: php -S 127.0.0.1:8000 -t public
 # terminal 2
 cd frontend && npm run dev                 # http://localhost:5173
 ```
+
+## Documentation de l'API (OpenAPI / Swagger)
+
+Quand le backend tourne : **http://127.0.0.1:8000/docs/** (interface Swagger, en français, utilisable hors ligne).
+
+- Elle décrit les **10 routes** de l'API : paramètres, corps de requête, toutes les réponses possibles (200, 401,
+  403, 404, 410, 422, 429…), avec des exemples. Un cadenas marque les routes qui demandent un jeton.
+- **Pour essayer les routes protégées :** `POST /api/register`, puis `POST /api/login`, copie le `token` reçu et
+  clique sur **Authorize** (en haut à droite) pour le coller.
+- La spécification brute est servie sur `/api/doc.json`, et exportée dans [`docs/openapi.yaml`](docs/openapi.yaml)
+  (importable dans Postman, Insomnia, etc.).
+- Elle est **générée depuis le code** (NelmioApiDocBundle) : des attributs `#[OA\...]` sur les contrôleurs, et
+  `backend/config/packages/nelmio_api_doc.yaml` pour ce qui est commun (schémas, authentification).
+
+**Après un changement de l'API**, mets la documentation à jour :
+
+```bash
+cd backend && composer docs
+```
+
+Des tests (`tests/Documentation/`) échouent si une route n'est pas documentée, si un cadenas ne correspond pas à la
+sécurité réelle, ou si `docs/openapi.yaml` est périmé.
 
 ## API des fichiers
 

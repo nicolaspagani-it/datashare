@@ -98,6 +98,17 @@ class AuthControllerTest extends ApiTestCase
         $this->assertResponseStatusCodeSame(422);
     }
 
+    public function testErrorsAreJsonEvenWithoutAnAcceptHeader(): void
+    {
+        // curl ou Swagger UI n'envoient pas toujours "Accept: application/json" : sans la route par défaut
+        // _format=json, Symfony répondrait en HTML.
+        $this->client->request('POST', '/api/register', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['email' => 'pas-un-email', 'password' => 'abc']));
+
+        $this->assertResponseStatusCodeSame(422);
+        $this->assertStringContainsString('application/json', $this->client->getResponse()->headers->get('Content-Type'));
+        $this->assertSame('email', json_decode($this->client->getResponse()->getContent(), true)['violations'][0]['propertyPath']);
+    }
+
     public function testRegisterIsPublic(): void
     {
         // Pas de token : l'inscription doit rester accessible (PUBLIC_ACCESS).

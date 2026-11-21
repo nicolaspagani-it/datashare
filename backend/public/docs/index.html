@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DataShare API – Documentation</title>
+    <!--
+        Interface Swagger de la documentation de l'API.
+
+        Page statique (sans Twig) : elle charge la spécification OpenAPI depuis /api/doc.json (générée par
+        NelmioApiDocBundle à partir des contrôleurs) et affiche l'interface Swagger UI.
+        Les fichiers de Swagger UI sont installés dans public/bundles/ par "composer install"
+        (commande assets:install) : rien n'est téléchargé depuis Internet, la page marche hors ligne.
+    -->
+    <link rel="stylesheet" href="../bundles/nelmioapidoc/swagger-ui/swagger-ui.css">
+    <style>
+        body { margin: 0; background: #fafafa; }
+        /* On masque la barre d'adresse de Swagger UI : la spécification est toujours /api/doc.json */
+        .swagger-ui .topbar { display: none; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+
+    <script src="../bundles/nelmioapidoc/swagger-ui/swagger-ui-bundle.js"></script>
+    <script>
+        window.ui = SwaggerUIBundle({
+            url: '../api/doc.json',
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            // Le jeton collé dans "Authorize" est conservé quand on recharge la page
+            persistAuthorization: true,
+            // Bouton "Try it out" ouvert d'office
+            tryItOutEnabled: true,
+            displayRequestDuration: true,
+            // Les groupes (tags) sont repliés au départ : on voit d'un coup d'œil les 4 thèmes de l'API
+            docExpansion: 'none',
+        });
+    </script>
+</body>
+</html>

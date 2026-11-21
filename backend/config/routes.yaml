@@ -9,8 +9,12 @@
 
 controllers:
     resource: routing.controllers
+    # Toutes les routes de l'API répondent en JSON, erreurs comprises, même si le client n'envoie pas
+    # l'en-tête "Accept: application/json" (curl, Swagger UI...). Sans cela, Symfony renvoie du HTML.
+    defaults: { _format: json }
 
 # Intercepté par le firewall "login" (json_login), le contrôleur n'est jamais appelé
 api_login:
     path: /api/login
     methods: [POST]
+    defaults: { _format: json }

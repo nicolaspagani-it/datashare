@@ -11,6 +11,7 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.7",
         "lexik/jwt-authentication-bundle": "^3.2",
+        "nelmio/api-doc-bundle": "^5.14",
         "phpdocumentor/reflection-docblock": "^6.0",
         "phpstan/phpdoc-parser": "^2.4",
         "symfony/console": "8.1.*",
@@ -79,7 +80,11 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "docs": "@php bin/console nelmio:apidoc:dump --format=yaml > ../docs/openapi.yaml"
+    },
+    "scripts-descriptions": {
+        "docs": "Exporte la documentation OpenAPI de l'API dans docs/openapi.yaml (à relancer après un changement de l'API)."
     },
     "conflict": {
         "symfony/symfony": "*"
