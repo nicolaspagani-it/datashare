@@ -7,6 +7,10 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 5173,
+    // Écoute explicitement en IPv4 sur cette machine seulement (comme l'API : 127.0.0.1). Sans cela, Vite écoute
+    // sur ce que Windows donne à "localhost", parfois uniquement ::1 (IPv6) : 127.0.0.1 est alors refusé.
+    // Les navigateurs essaient IPv6 puis IPv4 pour "localhost" : http://localhost:5173 fonctionne toujours.
+    host: '127.0.0.1',
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
