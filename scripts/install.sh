@@ -170,12 +170,35 @@ step 'Backend : clés de signature JWT'
 # OPENSSL_CONF. Si elle pointe vers un fichier qui n'existe pas, la génération échoue avec
 # « error:80000003:system library: No such process ». On la corrige alors, pour cette exécution seulement,
 # avec un fichier de configuration minimal.
-if [ -n "${OPENSSL_CONF:-}" ] && [ ! -f "$OPENSSL_CONF" ]; then
+#
+# On ne se contente pas de deviner : on TESTE si PHP sait créer une clé RSA. Si non, on essaie avec une
+# configuration OpenSSL minimale ; si ça échoue encore, on affiche un diagnostic précis.
+PROBE_FILE="$(mktemp)"
+cat > "$PROBE_FILE" <<'PHP'
+<?php
+$key = @openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+if ($key === false) {
+    while ($e = openssl_error_string()) { echo $e, "\n"; }
+    exit(1);
+}
+echo "ok\n";
+PHP
+if ! php "$PROBE_FILE" >/dev/null 2>&1; then
   MINIMAL_CONF="$(mktemp)"
   printf 'openssl_conf = default_conf\n[default_conf]\n[req]\ndistinguished_name = dn\n[dn]\n' > "$MINIMAL_CONF"
-  note "OPENSSL_CONF pointe vers un fichier introuvable ($OPENSSL_CONF) : configuration minimale utilisée pour cette installation"
+  note "PHP ne sait pas créer de clé avec la configuration OpenSSL actuelle (OPENSSL_CONF='${OPENSSL_CONF:-}') : essai avec une configuration minimale"
   export OPENSSL_CONF="$MINIMAL_CONF"
+  if ! PROBE_OUT="$(php "$PROBE_FILE" 2>&1)"; then
+    fail "Impossible de créer une clé RSA avec PHP, même avec une configuration OpenSSL minimale.
+Erreurs OpenSSL :
+$PROBE_OUT
+Configuration PHP :
+$(php --ini)
+Vérifie que l'extension openssl de PHP est chargée (php -m)."
+  fi
+  ok 'configuration OpenSSL minimale utilisée pour cette installation'
 fi
+rm -f "$PROBE_FILE"
 
 # La clé privée est chiffrée avec JWT_PASSPHRASE : si .env.local vient d'être (re)créé, la phrase secrète
 # est nouvelle et les anciennes clés ne s'ouvriraient plus (la connexion échouerait). On les régénère donc.

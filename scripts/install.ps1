@@ -214,12 +214,46 @@ Write-Step 'Backend : clés de signature JWT'
 # OPENSSL_CONF. Si elle pointe vers un fichier qui n'existe pas (reste d'un autre logiciel installé sur ce
 # PC), la génération échoue avec « error:80000003:system library: No such process ». On la corrige alors,
 # pour cette exécution seulement, avec un fichier de configuration minimal.
-if ($env:OPENSSL_CONF -and -not (Test-Path -LiteralPath $env:OPENSSL_CONF)) {
+#
+# On ne se contente pas de deviner : on TESTE si PHP sait créer une clé RSA. Si non, on essaie avec une
+# configuration OpenSSL minimale ; si ça échoue encore, on affiche un diagnostic précis.
+$probeFile = Join-Path ([System.IO.Path]::GetTempPath()) 'datashare-openssl-probe.php'
+Write-Utf8NoBom $probeFile @'
+<?php
+$key = @openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+if ($key === false) {
+    while ($e = openssl_error_string()) { echo $e, "\n"; }
+    exit(1);
+}
+echo "ok\n";
+'@
+function Test-PhpOpenSsl {
+    # Sous PowerShell 5.1, ce que PHP écrit sur sa sortie d'erreur ferait planter le script (Stop) : on l'évite.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $output = & php $probeFile 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $previous
+    return @{ Ok = ($code -eq 0); Output = $output.Trim() }
+}
+
+$probe = Test-PhpOpenSsl
+if (-not $probe.Ok) {
     $minimalConf = Join-Path ([System.IO.Path]::GetTempPath()) 'datashare-openssl.cnf'
     Write-Utf8NoBom $minimalConf ("openssl_conf = default_conf`n[default_conf]`n[req]`ndistinguished_name = dn`n[dn]`n")
-    Write-Note "OPENSSL_CONF pointe vers un fichier introuvable ($($env:OPENSSL_CONF)) : configuration minimale utilisée pour cette installation"
+    Write-Note "PHP ne sait pas créer de clé avec la configuration OpenSSL actuelle (OPENSSL_CONF = '$($env:OPENSSL_CONF)') : essai avec une configuration minimale"
     $env:OPENSSL_CONF = $minimalConf
+    $probe = Test-PhpOpenSsl
+    if (-not $probe.Ok) {
+        $phpIni = (& php --ini | Out-String).Trim()
+        Fail ("Impossible de créer une clé RSA avec PHP, même avec une configuration OpenSSL minimale.`n" +
+              "Erreurs OpenSSL :`n$($probe.Output)`n`n" +
+              "Configuration PHP :`n$phpIni`n`n" +
+              "Vérifie que l'extension openssl de PHP est bien chargée (php -m) et que les DLL OpenSSL de PHP (libcrypto, libssl) sont celles de votre version de PHP.")
+    }
+    Write-Ok 'configuration OpenSSL minimale utilisée pour cette installation'
 }
+Remove-Item -LiteralPath $probeFile -ErrorAction SilentlyContinue
 
 # La clé privée est chiffrée avec JWT_PASSPHRASE : si .env.local vient d'être (re)créé, la phrase secrète
 # est nouvelle et les anciennes clés ne s'ouvriraient plus (la connexion échouerait). On les régénère donc.
