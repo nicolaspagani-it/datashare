@@ -209,6 +209,18 @@ Write-Ok '.env.test.local créé'
 # --- 4. Clés JWT --------------------------------------------------------------------------------
 
 Write-Step 'Backend : clés de signature JWT'
+
+# OpenSSL (utilisé par PHP pour fabriquer les clés) lit le fichier désigné par la variable d'environnement
+# OPENSSL_CONF. Si elle pointe vers un fichier qui n'existe pas (reste d'un autre logiciel installé sur ce
+# PC), la génération échoue avec « error:80000003:system library: No such process ». On la corrige alors,
+# pour cette exécution seulement, avec un fichier de configuration minimal.
+if ($env:OPENSSL_CONF -and -not (Test-Path -LiteralPath $env:OPENSSL_CONF)) {
+    $minimalConf = Join-Path ([System.IO.Path]::GetTempPath()) 'datashare-openssl.cnf'
+    Write-Utf8NoBom $minimalConf ("openssl_conf = default_conf`n[default_conf]`n[req]`ndistinguished_name = dn`n[dn]`n")
+    Write-Note "OPENSSL_CONF pointe vers un fichier introuvable ($($env:OPENSSL_CONF)) : configuration minimale utilisée pour cette installation"
+    $env:OPENSSL_CONF = $minimalConf
+}
+
 # La clé privée est chiffrée avec JWT_PASSPHRASE : si .env.local vient d'être (re)créé, la phrase secrète
 # est nouvelle et les anciennes clés ne s'ouvriraient plus (la connexion échouerait). On les régénère donc.
 if ($envCreated) {

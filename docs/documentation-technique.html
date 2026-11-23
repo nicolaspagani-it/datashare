@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>DataShare – Documentation technique</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: #1b2233; margin: 0; }
+  h1 { font-size: 30pt; margin: 0 0 4pt; color: #1b2233; }
+  h2 { font-size: 16pt; color: #2a3aa8; border-bottom: 2px solid #4457e0; padding-bottom: 3pt; margin: 22pt 0 8pt; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 14pt 0 4pt; color: #1b2233; page-break-after: avoid; }
+  p { margin: 4pt 0 6pt; }
+  ul { margin: 4pt 0 8pt; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9.3pt; background: #eef0fa; padding: 0 3pt; border-radius: 3px; }
+  pre { font-family: Consolas, "Courier New", monospace; font-size: 8.8pt; background: #10162a; color: #e6e9f5; padding: 8pt 10pt; border-radius: 6px; white-space: pre-wrap; margin: 6pt 0 8pt; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 9.5pt; page-break-inside: auto; }
+  th { background: #4457e0; color: #fff; text-align: left; padding: 4pt 6pt; }
+  td { border-bottom: 1px solid #d9d7cf; padding: 4pt 6pt; vertical-align: top; }
+  tr { page-break-inside: avoid; }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .cover .tag { color: #4457e0; font-weight: 600; letter-spacing: 2px; font-size: 11pt; }
+  .cover .sub { font-size: 15pt; color: #586079; margin-top: 6pt; }
+  .cover .meta { margin-top: 40pt; color: #586079; font-size: 10.5pt; }
+  .toc { margin: 0 0 10pt; padding-left: 18pt; }
+  .toc li { margin: 3pt 0; font-size: 11.5pt; }
+  .note { background: #fff6e5; border-left: 4px solid #f2a33a; padding: 6pt 10pt; margin: 8pt 0; page-break-inside: avoid; }
+  .ok { background: #e9f6ee; border-left: 4px solid #2e9b57; padding: 6pt 10pt; margin: 8pt 0; page-break-inside: avoid; }
+  .diagram { display: flex; flex-direction: column; gap: 8pt; margin: 8pt 0 10pt; page-break-inside: avoid; }
+  .zones { display: flex; align-items: stretch; gap: 0; }
+  .zone { flex: 1; border-radius: 8px; padding: 8pt; display: flex; flex-direction: column; gap: 6pt; }
+  .zone .zt { font-weight: 700; font-size: 9.5pt; }
+  .z1 { background: #eaf0ff; border: 1.5px solid #3a6fe0; }
+  .z2 { background: #e9f6ee; border: 1.5px solid #2e9b57; flex: 1.25; }
+  .z3 { background: #fff3df; border: 1.5px solid #d98a2b; }
+  .blk { background: #fff; border: 1.2px solid #8d96b8; border-radius: 6px; padding: 5pt 7pt; font-size: 8.8pt; }
+  .blk b { display: block; font-size: 9.5pt; }
+  .arrow { width: 34pt; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 8pt; color: #586079; text-align: center; }
+  .arrow span { font-size: 16pt; line-height: 1; color: #4457e0; }
+  .er { display: flex; align-items: center; gap: 0; margin: 8pt 0 10pt; page-break-inside: avoid; }
+  .ent { flex: 1; border: 1.5px solid #4457e0; border-radius: 8px; overflow: hidden; font-size: 9pt; }
+  .ent .h { background: #4457e0; color: #fff; font-weight: 700; padding: 4pt 8pt; font-size: 10pt; }
+  .ent .r { padding: 2.5pt 8pt; border-bottom: 1px solid #e3e5f3; display: flex; justify-content: space-between; gap: 8pt; }
+  .ent .r i { color: #586079; font-style: normal; }
+  .rel { width: 70pt; text-align: center; font-size: 8.5pt; color: #586079; }
+  .rel span { display: block; font-size: 16pt; color: #4457e0; line-height: 1; }
+  .break { page-break-before: always; }
+  .foot { color: #586079; font-size: 9pt; margin-top: 18pt; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="tag">DOCUMENTATION TECHNIQUE</div>
+  <h1>DataShare</h1>
+  <div class="sub">Partage de fichiers par lien, avec expiration et mot de passe facultatif</div>
+  <div class="meta">
+    Symfony 8 (PHP 8.4) · Vue 3 · PostgreSQL<br>
+    Version 0.1.0 · Novembre 2026<br><br>
+    Dépôt : README.md, SECURITY.md, TESTING.md, PERF.md, MAINTENANCE.md, AI.md, docs/openapi.yaml
+  </div>
+</div>
+
+<h2 style="margin-top:0">Sommaire</h2>
+<ol class="toc">
+  <li>Architecture de l'application</li>
+  <li>Choix technologiques justifiés</li>
+  <li>Modèle de données</li>
+  <li>Documentation de l'API</li>
+  <li>Sécurité et gestion des accès</li>
+  <li>Qualité, tests et maintenance</li>
+  <li>Processus d'installation et d'exécution</li>
+  <li>Utilisation de l'IA dans le développement</li>
+</ol>
+
+<h3>Présentation</h3>
+<p>DataShare permet d'envoyer un fichier (1 Go maximum), de choisir sa durée de conservation (de 1 à 7 jours) et un mot de passe
+facultatif, puis d'obtenir un <b>lien de partage</b>. Toute personne qui possède le lien peut consulter la page de téléchargement,
+saisir le mot de passe si besoin et télécharger le fichier, sans compte. Un utilisateur avec compte retrouve ses envois dans
+« Mon espace », où il voit leur état (actif, expiré) et peut les supprimer. Passé la date d'expiration, le lien répond « expiré » et le
+contenu est supprimé du disque.</p>
+
+<h2 class="break">1. Architecture de l'application</h2>
+<p>L'application se compose de trois zones : une <b>application web monopage</b> (Vue) qui s'exécute dans le navigateur, une
+<b>API REST</b> (Symfony) qui porte toute la logique, et des <b>données</b> réparties entre PostgreSQL (comptes, informations sur les
+fichiers) et le disque du serveur (contenu des fichiers). Le navigateur n'accède jamais directement à la base ni au disque : tout
+passe par l'API.</p>
+
+<div class="diagram">
+  <div class="zones">
+    <div class="zone z1">
+      <div class="zt">Navigateur</div>
+      <div class="blk"><b>Application Vue 3</b>Pinia (état), vue-router, validation côté navigateur, envoie le jeton JWT dans l'en-tête <code>Authorization</code></div>
+    </div>
+    <div class="arrow"><span>⇄</span>HTTPS<br>JSON</div>
+    <div class="zone z2">
+      <div class="zt">Serveur applicatif (PHP / Symfony)</div>
+      <div class="blk"><b>Sécurité</b>Jeton JWT (RS256), mots de passe hachés, limiteurs d'essais</div>
+      <div class="blk"><b>API REST (10 routes)</b>Contrôleurs JSON, validation côté serveur, erreurs au format commun</div>
+      <div class="blk"><b>Services métier</b>Stockage des fichiers, ticket de téléchargement, génération des liens</div>
+      <div class="blk"><b>Tâche planifiée</b><code>app:files:purge-expired</code>, toutes les heures</div>
+    </div>
+    <div class="arrow"><span>→</span>SQL<br>fichiers</div>
+    <div class="zone z3">
+      <div class="zt">Données et stockage</div>
+      <div class="blk"><b>PostgreSQL</b>Utilisateurs, fichiers partagés, dates d'expiration</div>
+      <div class="blk"><b>Disque du serveur</b><code>backend/var/uploads</code>, hors du dossier public, noms aléatoires</div>
+    </div>
+  </div>
+</div>
+
+<h3>Déroulement d'un partage</h3>
+<ol>
+  <li>Le navigateur envoie le fichier en <code>multipart/form-data</code> à <code>POST /api/files</code>. Le serveur vérifie la taille (1 Go), la durée (1 à 7 jours) et hache le mot de passe éventuel.</li>
+  <li>Le contenu est écrit sur le disque sous un nom aléatoire ; une ligne est créée en base avec un lien (<code>token</code> de 8 caractères). La réponse contient l'adresse de partage <code>&lt;FRONT_URL&gt;/&lt;token&gt;</code>.</li>
+  <li>Le destinataire ouvre le lien : la page appelle <code>GET /api/shared/{token}</code> pour afficher le nom, la taille et l'expiration.</li>
+  <li>Pour un fichier protégé, le mot de passe est envoyé à <code>POST /api/shared/{token}/unlock</code> ; le serveur répond par une adresse de téléchargement contenant un <b>ticket signé</b> valable 10 minutes.</li>
+  <li>Le navigateur ouvre <code>GET /api/shared/{token}/download</code> : le fichier est envoyé en flux, en pièce jointe.</li>
+  <li>Chaque heure, la tâche de purge supprime du disque le contenu des fichiers expirés.</li>
+</ol>
+
+<h3>Organisation du code</h3>
+<table>
+  <tr><th style="width:30%">Dossier</th><th>Rôle</th></tr>
+  <tr><td><code>backend/src/Controller/Api</code></td><td>Routes de l'API : authentification, fichiers de l'utilisateur, liens de partage, santé</td></tr>
+  <tr><td><code>backend/src/Entity, Repository</code></td><td>Entités Doctrine (<code>User</code>, <code>SharedFile</code>) et leurs requêtes</td></tr>
+  <tr><td><code>backend/src/Service</code></td><td><code>FileStorage</code> (disque), <code>DownloadTicket</code> (ticket signé), <code>ShareTokenGenerator</code> (liens)</td></tr>
+  <tr><td><code>backend/src/Dto, Command</code></td><td>Validation des entrées, commande de purge</td></tr>
+  <tr><td><code>frontend/src/views, components</code></td><td>Pages (accueil, connexion, mon espace, téléchargement) et composants réutilisables</td></tr>
+  <tr><td><code>frontend/src/stores, api.js, router.js</code></td><td>État (Pinia), client HTTP unique, routes et garde d'accès</td></tr>
+  <tr><td><code>scripts/</code></td><td>Installation (Windows, Linux/macOS), base de données, test de charge</td></tr>
+</table>
+
+<h2 class="break">2. Choix technologiques justifiés</h2>
+<table>
+  <tr><th style="width:24%">Choix</th><th style="width:38%">Justification</th><th>Alternatives écartées</th></tr>
+  <tr><td><b>Symfony 8 / PHP 8.4</b></td><td>Framework mûr, composants de sécurité, de validation, de limitation de débit et de ligne de commande intégrés ; bien maîtrisé par l'équipe.</td><td>Laravel (équivalent, moins maîtrisé) ; Node/Express (tout à assembler soi-même).</td></tr>
+  <tr><td><b>Vue 3 + Vite + Pinia</b></td><td>Interface réactive avec peu de code ; le build de production pèse 46 ko de JavaScript compressé ; Pinia garde l'état partagé (utilisateur, fichiers).</td><td>React (plus de code de liaison) ; pages Twig rendues par le serveur (le choix SPA permet une API réutilisable et testable).</td></tr>
+  <tr><td><b>API REST en JSON</b></td><td>Simple, documentable (OpenAPI), consommable par n'importe quel client.</td><td>GraphQL (surdimensionné pour 10 routes).</td></tr>
+  <tr><td><b>PostgreSQL + Doctrine ORM</b></td><td>Base relationnelle robuste, contraintes d'unicité, migrations versionnées, requêtes toujours paramétrées.</td><td>MySQL (équivalent) ; SQLite (peu adapté au multi-utilisateur).</td></tr>
+  <tr><td><b>JWT signé en RS256</b></td><td>Authentification sans état, adaptée à une SPA ; la clé publique suffit à vérifier un jeton. Envoyé dans un en-tête (pas de cookie) : la classe d'attaques CSRF ne s'applique pas.</td><td>Sessions et cookies (état côté serveur, CSRF à traiter).</td></tr>
+  <tr><td><b>Ticket de téléchargement signé (HMAC)</b></td><td>Un téléchargement est une simple adresse (GET) qui ne peut pas porter le mot de passe : le mot de passe est vérifié une fois, puis remplacé par un ticket temporaire propre au fichier.</td><td>Mot de passe dans l'adresse (fuite dans l'historique et les journaux).</td></tr>
+  <tr><td><b>Stockage sur disque hors du site</b></td><td>Fichiers jusqu'à 1 Go envoyés en flux sans charger la mémoire ; jamais accessibles directement par une adresse.</td><td>Stockage en base (lourd) ; stockage objet S3 (piste pour la production).</td></tr>
+  <tr><td><b>NelmioApiDoc + Swagger UI</b></td><td>Documentation générée depuis le code, donc toujours proche de la réalité, vérifiée par des tests.</td><td>Documentation écrite à la main (dérive).</td></tr>
+  <tr><td><b>PHPUnit + Vitest</b></td><td>Un outil standard par langage, avec mesure de couverture.</td><td>Pest, Jest (équivalents).</td></tr>
+</table>
+
+<h2 class="break">3. Modèle de données</h2>
+<p>Deux tables suffisent. Les migrations Doctrine (<code>backend/migrations</code>) créent le schéma ; le contenu des fichiers n'est pas en base.</p>
+
+<div class="er">
+  <div class="ent">
+    <div class="h">user</div>
+    <div class="r"><span>id</span><i>entier, clé primaire</i></div>
+    <div class="r"><span>email</span><i>varchar(180), unique</i></div>
+    <div class="r"><span>roles</span><i>json</i></div>
+    <div class="r"><span>password</span><i>hash du mot de passe</i></div>
+  </div>
+  <div class="rel"><span>1 ─── 0..n</span>un compte,<br>plusieurs fichiers</div>
+  <div class="ent">
+    <div class="h">shared_file</div>
+    <div class="r"><span>id</span><i>entier, clé primaire</i></div>
+    <div class="r"><span>owner_id</span><i>→ user, nullable</i></div>
+    <div class="r"><span>original_name</span><i>varchar(255)</i></div>
+    <div class="r"><span>stored_name</span><i>varchar(64), nullable, unique</i></div>
+    <div class="r"><span>mime_type</span><i>varchar(127)</i></div>
+    <div class="r"><span>size</span><i>entier (octets)</i></div>
+    <div class="r"><span>password_hash</span><i>nullable</i></div>
+    <div class="r"><span>token</span><i>varchar(16), unique</i></div>
+    <div class="r"><span>created_at / expires_at</span><i>dates</i></div>
+  </div>
+</div>
+
+<table>
+  <tr><th style="width:26%">Champ</th><th>Règle</th></tr>
+  <tr><td><code>user.email</code></td><td>Enregistré en minuscules : <code>Bob@x.com</code> et <code>bob@x.com</code> désignent le même compte. Unique.</td></tr>
+  <tr><td><code>user.password</code></td><td>Hash (algorithme « auto » de Symfony). Jamais renvoyé par l'API.</td></tr>
+  <tr><td><code>shared_file.owner_id</code></td><td>Vide pour un envoi anonyme. Clé étrangère avec <code>ON DELETE SET NULL</code> : supprimer un compte ne supprime pas les lignes.</td></tr>
+  <tr><td><code>shared_file.stored_name</code></td><td>Nom aléatoire (32 caractères hexadécimaux) du fichier sur le disque. Devient vide quand le contenu est purgé : l'utilisateur voit alors « Expiré ».</td></tr>
+  <tr><td><code>shared_file.token</code></td><td>Partie aléatoire du lien : 8 caractères parmi 62, soit environ 218 000 milliards de combinaisons (<code>random_int</code>). Unique.</td></tr>
+  <tr><td><code>shared_file.password_hash</code></td><td>Vide si le fichier n'est pas protégé. Sert aussi de clé de signature du ticket de téléchargement.</td></tr>
+  <tr><td><code>shared_file.size</code></td><td>Entier de 32 bits : suffisant, la limite est de 1 Go.</td></tr>
+  <tr><td><code>expires_at</code></td><td>Date de création + 1 à 7 jours. Vérifiée à chaque appel de l'API, indépendamment de la purge.</td></tr>
+</table>
+<p>Cycle de vie d'une ligne <code>shared_file</code> : <b>créée</b> à l'envoi → <b>expirée</b> à <code>expires_at</code> (l'API répond 410) → <b>purgée</b> (contenu supprimé, <code>stored_name</code> vide ; la ligne est conservée pour un propriétaire, supprimée pour un envoi anonyme) → <b>supprimée</b> si le propriétaire la supprime.</p>
+
+<h2 class="break">4. Documentation de l'API</h2>
+<p>L'API est décrite au format <b>OpenAPI 3</b>, générée depuis le code (attributs <code>#[OA\…]</code> sur les contrôleurs et le DTO). Elle est consultable :</p>
+<ul>
+  <li>en ligne, quand le backend tourne : <code>http://127.0.0.1:8000/docs/</code> (interface Swagger, en français, utilisable hors ligne) ;</li>
+  <li>en JSON : <code>/api/doc.json</code> ; en fichier : <code>docs/openapi.yaml</code> (importable dans Postman ou Insomnia) ;</li>
+  <li>à regénérer après un changement de l'API : <code>cd backend &amp;&amp; composer docs</code>.</li>
+</ul>
+<p>Pour essayer les routes protégées dans Swagger : <code>POST /api/register</code>, puis <code>POST /api/login</code>, copier le <code>token</code> reçu et cliquer sur « Authorize ».</p>
+
+<table>
+  <tr><th style="width:9%">Méthode</th><th style="width:27%">Route</th><th style="width:13%">Accès</th><th>Rôle et réponses principales</th></tr>
+  <tr><td>POST</td><td><code>/api/register</code></td><td>public</td><td>Crée un compte (email, mot de passe de 8 caractères minimum). 201 ; 409 email déjà utilisé ; 422 erreurs de validation.</td></tr>
+  <tr><td>POST</td><td><code>/api/login</code></td><td>public</td><td>Renvoie un jeton JWT valable 1 heure. 401 identifiants invalides ; blocage après 5 échecs en 15 minutes.</td></tr>
+  <tr><td>GET</td><td><code>/api/me</code></td><td>jeton</td><td>Utilisateur connecté (id, email, rôles). 401 sans jeton valide.</td></tr>
+  <tr><td>POST</td><td><code>/api/files</code></td><td>public</td><td>Envoie un fichier (<code>file</code>, <code>expiration</code> 1 à 7, <code>password</code> facultatif). Le fichier est rattaché au compte si un jeton valide est fourni. 201 avec le lien ; 422 ; 429 au-delà de 10 envois par heure pour un visiteur.</td></tr>
+  <tr><td>GET</td><td><code>/api/files</code></td><td>jeton</td><td>Liste de mes fichiers, du plus récent au plus ancien, y compris les expirés.</td></tr>
+  <tr><td>DELETE</td><td><code>/api/files/{id}</code></td><td>jeton, propriétaire</td><td>Supprime la ligne et le contenu. 204 ; 404 si le fichier n'existe pas ou appartient à quelqu'un d'autre.</td></tr>
+  <tr><td>GET</td><td><code>/api/shared/{token}</code></td><td>public</td><td>Nom, taille, type, <code>protected</code>, <code>expiresAt</code>. 404 lien inconnu ; 410 expiré.</td></tr>
+  <tr><td>POST</td><td><code>/api/shared/{token}/unlock</code></td><td>public</td><td>Vérifie le mot de passe, renvoie l'adresse de téléchargement (avec ticket pour un fichier protégé). 403 mot de passe incorrect ; 422 manquant ; 429 trop d'essais.</td></tr>
+  <tr><td>GET</td><td><code>/api/shared/{token}/download</code></td><td>public (ticket)</td><td>Envoie le fichier en flux, en pièce jointe, avec reprise possible (<code>Range</code>). 403 ticket absent ou invalide ; 410 expiré.</td></tr>
+  <tr><td>GET</td><td><code>/api/health</code></td><td>public</td><td>État du service.</td></tr>
+</table>
+
+<h3>Format des erreurs</h3>
+<p>Toutes les erreurs sont en JSON. Les erreurs de validation sont rattachées à un champ, ce qui permet à l'interface de les afficher
+sous le bon champ :</p>
+<pre>{ "message": "Cette adresse email est déjà utilisée.",
+  "violations": [ { "propertyPath": "email", "title": "Cette adresse email est déjà utilisée." } ] }</pre>
+<p>Codes utilisés : 200/201/204 succès, 401 non connecté, 403 mot de passe ou ticket invalide, 404 inconnu, 409 doublon, 410 expiré,
+422 validation, 429 trop d'essais.</p>
+<div class="ok">Des tests (<code>ApiDocumentationTest</code>) échouent si une route n'est pas documentée, si un cadenas ne correspond pas à la
+sécurité réelle, si une référence est cassée ou si <code>docs/openapi.yaml</code> est périmé.</div>
+
+<h2 class="break">5. Sécurité et gestion des accès</h2>
+<p>Le détail complet (avec la liste des tests qui prouvent chaque point) est dans <code>SECURITY.md</code>. En résumé :</p>
+
+<h3>Authentification et accès</h3>
+<table>
+  <tr><th style="width:26%">Sujet</th><th>Mesure</th></tr>
+  <tr><td>Comptes</td><td>Mot de passe haché (jamais stocké ni renvoyé en clair). Connexion par jeton JWT signé en RS256, valable 1 heure ; un jeton falsifié, absent ou périmé est refusé (401). Même message pour « email inconnu » et « mauvais mot de passe ».</td></tr>
+  <tr><td>Contrôle d'accès</td><td>Routes publiques : inscription, connexion, santé, documentation, liens de partage, envoi. Tout le reste exige un jeton. Un utilisateur ne voit et ne supprime que ses fichiers (404 pour ceux des autres, sans révéler leur existence).</td></tr>
+  <tr><td>Fichiers protégés</td><td>Mot de passe haché. Après vérification, un <b>ticket</b> signé (HMAC-SHA256, 10 minutes, propre au fichier et non falsifiable, comparé en temps constant) autorise le téléchargement. L'expiration est vérifiée à chaque appel, même avec un ticket valide.</td></tr>
+</table>
+
+<h3>Protection contre les abus</h3>
+<table>
+  <tr><th style="width:26%">Abus</th><th>Mesure</th></tr>
+  <tr><td>Force brute sur un fichier</td><td>5 essais de mot de passe par 15 minutes, par lien et par adresse IP, puis 429 avec <code>Retry-After</code> ; même le bon mot de passe est refusé pendant le blocage.</td></tr>
+  <tr><td>Force brute sur la connexion</td><td>5 échecs par 15 minutes, par email et adresse IP.</td></tr>
+  <tr><td>Remplissage du disque</td><td>1 Go maximum par fichier ; 10 envois par heure et par IP pour un visiteur non connecté.</td></tr>
+  <tr><td>Deviner un lien</td><td>8 caractères aléatoires (environ 218 000 milliards de combinaisons).</td></tr>
+</table>
+
+<h3>Protection des données et du navigateur</h3>
+<table>
+  <tr><th style="width:26%">Risque</th><th>Mesure</th></tr>
+  <tr><td>Injection SQL</td><td>Toutes les requêtes passent par Doctrine, avec des paramètres liés.</td></tr>
+  <tr><td>XSS</td><td>Vue échappe toutes les valeurs affichées ; aucun <code>v-html</code> dans le code. Les fichiers sont toujours envoyés en pièce jointe (<code>Content-Disposition: attachment</code>) avec <code>X-Content-Type-Options: nosniff</code> : le navigateur ne les interprète jamais.</td></tr>
+  <tr><td>CSRF</td><td>Le jeton est envoyé dans un en-tête par le code de l'application, pas dans un cookie : le navigateur ne l'ajoute jamais de lui-même.</td></tr>
+  <tr><td>Chemins de fichiers</td><td>Stockage hors du dossier public, nom aléatoire ; le nom d'origine n'est qu'en base et est nettoyé (<code>../x.jpg</code> devient <code>x.jpg</code>).</td></tr>
+  <tr><td>Fuite d'information</td><td>Les réponses publiques ne contiennent ni propriétaire, ni nom sur le disque, ni hash.</td></tr>
+  <tr><td>Secrets</td><td>Aucun secret dans git : <code>.env.local</code> et les clés JWT sont ignorés ; <code>APP_SECRET</code> et la phrase secrète sont générés au hasard par les scripts d'installation.</td></tr>
+</table>
+
+<h3>Scan des dépendances (21 novembre 2026)</h3>
+<table>
+  <tr><th style="width:42%">Contrôle</th><th>Résultat</th></tr>
+  <tr><td><code>composer audit</code> (backend)</td><td>aucune vulnérabilité connue</td></tr>
+  <tr><td><code>npm audit --omit=dev</code> (ce qui part en production)</td><td>0 vulnérabilité</td></tr>
+  <tr><td><code>npm audit</code> (outils de test compris)</td><td>5 alertes modérées, toutes dans la chaîne du paquet de test <code>@vue/test-utils</code> (minimatch), sans effet sur le code livré</td></tr>
+</table>
+
+<h3>Limites connues</h3>
+<div class="note">Une revue de code a trouvé et fait corriger 4 problèmes importants (limitation de la connexion, quota des envois anonymes, jeton expiré
+à l'envoi, emails sensibles à la casse). Restent à traiter avant une vraie mise en production : <b>HTTPS</b> et en-têtes de sécurité (CSP) à configurer
+sur le serveur web, <b>quotas</b> par compte et plafond d'espace disque, jeton conservé dans le <code>localStorage</code> (cookie HttpOnly et jeton
+de renouvellement en piste), <code>trusted_proxies</code> derrière un proxy, pas de vérification des emails, fichiers non chiffrés ni analysés par un antivirus.
+La liste complète (13 points) figure dans <code>SECURITY.md</code>.</div>
+
+<h2 class="break">6. Qualité, tests et maintenance</h2>
+
+<h3>Tests</h3>
+<table>
+  <tr><th style="width:26%"></th><th>Backend (PHPUnit 13)</th><th>Frontend (Vitest 5 + Vue Test Utils)</th></tr>
+  <tr><td>Nombre de tests</td><td>198 (750 assertions)</td><td>251 dans 23 fichiers</td></tr>
+  <tr><td>Résultat</td><td>tous réussis</td><td>tous réussis</td></tr>
+  <tr><td>Couverture</td><td>95,3 % des lignes, 94,3 % des méthodes</td><td>100 % des lignes, 99,7 % des instructions</td></tr>
+  <tr><td>Nature</td><td>appels HTTP réels sur une vraie base PostgreSQL de test</td><td>composants et pages, API simulée</td></tr>
+</table>
+<p>Niveaux : <b>unitaire</b> (ticket, générateur de lien, stockage, validation, utilitaires), <b>intégration</b> (chaque route, de la requête à la base),
+<b>contrat</b> (la spécification OpenAPI correspond à l'API réelle), <b>interface</b> (formulaires, erreurs, états des pages, garde de routes).
+Le plan complet, avec les critères d'acceptation par fonctionnalité, est dans <code>TESTING.md</code>.</p>
+
+<h3>Performances</h3>
+<p>Mesures sur un poste de développement, application en mode production avec <code>opcache</code> (<code>PERF.md</code>) :</p>
+<table>
+  <tr><th style="width:44%">Indicateur</th><th>Mesure</th></tr>
+  <tr><td>Consultation d'un lien (<code>GET /api/shared/{token}</code>)</td><td>médiane 83 ms, p95 214 ms, 0 erreur</td></tr>
+  <tr><td>Requête sans base (<code>/api/health</code>)</td><td>médiane 31 ms</td></tr>
+  <tr><td>JavaScript du frontend (compressé)</td><td>45,9 ko (113 ko pour toute la page d'accueil, 6 requêtes)</td></tr>
+  <tr><td>Chargement de la page d'accueil</td><td>149 ms en local</td></tr>
+</table>
+<p class="note">Le serveur de test traite une requête à la fois : ces chiffres donnent des ordres de grandeur, pas une capacité de production. Sans <code>opcache</code>, les mêmes requêtes étaient 7 fois plus lentes : il doit être activé en production.</p>
+
+<h3>Maintenance</h3>
+<table>
+  <tr><th style="width:44%">Tâche</th><th style="width:20%">Fréquence</th><th>Risque si elle est oubliée</th></tr>
+  <tr><td>Purge des fichiers expirés (<code>app:files:purge-expired</code>)</td><td>toutes les heures</td><td>le disque se remplit (les liens expirés répondent déjà 410)</td></tr>
+  <tr><td>Sauvegarde de la base <b>et</b> de <code>var/uploads</code></td><td>chaque jour</td><td>perte de comptes ou de fichiers</td></tr>
+  <tr><td><code>composer audit</code>, <code>npm audit</code></td><td>chaque semaine</td><td>faille connue non corrigée</td></tr>
+  <tr><td>Mises à jour mineures des dépendances</td><td>chaque mois</td><td>retard cumulé, mises à jour plus risquées</td></tr>
+  <tr><td>Rotation des clés JWT</td><td>chaque année</td><td>jetons falsifiables en cas de fuite ancienne</td></tr>
+  <tr><td>Restauration d'essai d'une sauvegarde</td><td>chaque trimestre</td><td>sauvegarde inutilisable le jour où il le faut</td></tr>
+</table>
+<p>Règles de mise à jour : une mise à jour à la fois, tests au vert avant et après, <code>composer.lock</code> et <code>package-lock.json</code> commités,
+branche dédiée pour une version majeure. Procédures détaillées (sauvegarde, restauration, migrations, rotation des clés, déploiement) : <code>MAINTENANCE.md</code>.</p>
+
+<h2 class="break">7. Processus d'installation et d'exécution</h2>
+
+<h3>Prérequis</h3>
+<table>
+  <tr><th style="width:22%">Outil</th><th style="width:22%">Version</th><th>Remarque</th></tr>
+  <tr><td>PHP</td><td>8.4 ou plus</td><td>extensions <code>ctype</code>, <code>iconv</code>, <code>mbstring</code>, <code>openssl</code>, <code>sodium</code>, <code>pdo_pgsql</code>, <code>fileinfo</code></td></tr>
+  <tr><td>Composer</td><td>2.x</td><td></td></tr>
+  <tr><td>Node.js</td><td>20.19+ ou 22.12+</td><td>npm inclus</td></tr>
+  <tr><td>PostgreSQL</td><td>16 ou plus</td><td>testé avec la version 18</td></tr>
+</table>
+<p>Il n'y a ni Python ni Docker. Pour la couverture de code : extension PHP <code>pcov</code> (facultatif).</p>
+
+<h3>Installation automatique (recommandée)</h3>
+<p>Le script vérifie les prérequis, installe les dépendances, crée la configuration locale, génère les clés JWT, crée les bases (développement et
+test) et applique les migrations. Il est <b>rejouable</b>.</p>
+<pre># Windows (PowerShell)
+.\scripts\install.ps1 -DbUser postgres -DbPassword 'mon-mot-de-passe'
+
+# Linux / macOS
+DB_USER=postgres DB_PASSWORD='mon-mot-de-passe' ./scripts/install.sh</pre>
+<p>Options : <code>-DbHost</code>, <code>-DbPort</code>, <code>-DbName</code>, <code>-FrontUrl</code>, <code>-Force</code> (régénère la configuration et les clés),
+<code>-SkipFrontend</code>, <code>-RunTests</code> (variantes <code>DB_HOST</code>… et <code>--force</code>… pour le script Linux/macOS).
+Si l'utilisateur PostgreSQL n'existe pas : <code>psql -U postgres -v db_user=datashare -v db_password='…' -v db_name=datashare -f scripts/db/init.sql</code>.</p>
+
+<h3>Lancement</h3>
+<pre># terminal 1 : API
+cd backend && symfony serve --no-tls -d     # ou : php -S 127.0.0.1:8000 -t public
+
+# terminal 2 : interface
+cd frontend && npm run dev                   # http://localhost:5173</pre>
+<p>L'interface appelle l'API sur <code>/api</code>, redirigé par Vite vers <code>http://127.0.0.1:8000</code>. La documentation Swagger est sur <code>http://127.0.0.1:8000/docs/</code>.
+La purge se planifie séparément : <code>cd backend &amp;&amp; php bin/console app:files:purge-expired</code> (toutes les heures).</p>
+
+<h3>Variables d'environnement</h3>
+<p>Toute la configuration locale est dans <code>backend/.env.local</code> (ignoré par git) ; le fichier <code>backend/.env</code> n'est jamais modifié.</p>
+<table>
+  <tr><th style="width:26%">Variable</th><th>Rôle</th></tr>
+  <tr><td><code>APP_ENV</code></td><td><code>dev</code> en développement, <code>prod</code> en production (jamais <code>dev</code> en production)</td></tr>
+  <tr><td><code>APP_SECRET</code></td><td>secret de l'application, aléatoire (généré par le script)</td></tr>
+  <tr><td><code>DATABASE_URL</code></td><td>connexion PostgreSQL (un <code>%</code> du mot de passe est doublé)</td></tr>
+  <tr><td><code>JWT_SECRET_KEY</code>, <code>JWT_PUBLIC_KEY</code></td><td>chemins des clés de signature (<code>backend/config/jwt/</code>)</td></tr>
+  <tr><td><code>JWT_PASSPHRASE</code></td><td>phrase secrète de la clé privée (générée par le script)</td></tr>
+  <tr><td><code>FRONT_URL</code></td><td>adresse du frontend, pour construire les liens de partage (défaut <code>http://localhost:5173</code>)</td></tr>
+</table>
+<p>Les tests utilisent <code>backend/.env.test.local</code> et une base séparée <code>datashare_test</code>. Commandes : <code>php vendor/bin/phpunit</code> (backend),
+<code>npm test</code> (frontend), <code>npm run test:coverage</code> (couverture).</p>
+
+<h3>Dépannage fréquent</h3>
+<table>
+  <tr><th style="width:36%">Symptôme</th><th>Cause et solution</th></tr>
+  <tr><td>« le rôle "xxx" n'existe pas »</td><td>un autre serveur PostgreSQL répond sur le port 5432 (cas typique avec Laragon) : n'en garder qu'un, utiliser un utilisateur de ce serveur</td></tr>
+  <tr><td>Erreur 500 « private key/passphrase »</td><td><code>JWT_PASSPHRASE</code> ne correspond plus aux clés : relancer l'installation avec <code>-Force</code></td></tr>
+  <tr><td>Envoi d'un gros fichier refusé</td><td><code>upload_max_filesize</code> et <code>post_max_size</code> de <code>php.ini</code> doivent faire au moins 1 Go</td></tr>
+</table>
+
+<h2 class="break">8. Utilisation de l'IA dans le développement</h2>
+<p>DataShare a été développé avec l'assistant de programmation <b>Claude Code</b> (modèles Claude d'Anthropic). L'IA a écrit une grande partie du code,
+des tests et de la documentation ; le développeur a cadré chaque étape, relu, exécuté et validé, et pris les décisions de conception. Le détail est dans <code>AI.md</code>.</p>
+
+<table>
+  <tr><th style="width:34%">Tâche</th><th>Auteur</th></tr>
+  <tr><td>Sujet, fonctionnalités, choix (JWT, suppression de Twig, durées, 1 Go), maquettes Figma</td><td>développeur</td></tr>
+  <tr><td>Code de l'API, des pages, des composants, des scripts</td><td>IA, relu et exécuté par le développeur</td></tr>
+  <tr><td>Tests, documentation, mesures de performance</td><td>IA, à partir du code et de mesures réelles</td></tr>
+  <tr><td>Commits</td><td>développeur (message proposé par l'IA ; type <code>feat(ai)</code> pour le code essentiellement généré)</td></tr>
+</table>
+
+<h3>Méthode</h3>
+<ul>
+  <li><b>Une étape à la fois</b> : pour les sujets structurants, l'IA proposait d'abord un plan, sans toucher au code, jusqu'à l'accord du développeur.</li>
+  <li><b>Code commenté en français</b>, avec des explications du frontend Vue par comparaison avec Symfony (store ≈ service, routeur ≈ <code>routes.yaml</code> + <code>security.yaml</code>).</li>
+  <li><b>Exécution systématique</b> : chaque modification est suivie des tests et d'une vérification sur l'application qui tourne.</li>
+</ul>
+
+<h3>Contrôles du travail de l'IA</h3>
+<ul>
+  <li>449 tests automatisés (198 PHPUnit, 251 Vitest), dont des tests qui échouent si la documentation s'écarte du code.</li>
+  <li>Installation rejouée sur une copie vierge du dépôt ; scan des dépendances (<code>composer audit</code>, <code>npm audit</code>).</li>
+  <li><b>Revue de code indépendante</b> : 8 constats dont 4 importants, tous corrigés ou documentés (limitation de la connexion, quota des envois anonymes, jeton expiré à l'envoi, emails sensibles à la casse). Un code généré se vérifie : ces défauts existaient bel et bien.</li>
+</ul>
+
+<h3>Limites et risques assumés</h3>
+<ul>
+  <li><b>Fiabilité</b> : l'IA peut produire du code qui semble juste et ne l'est pas ; les tests, l'exécution réelle et la revue sont les garde-fous. Elle ne remplace pas la relecture humaine.</li>
+  <li><b>Sécurité</b> : pas de test d'intrusion indépendant ; limites connues listées dans <code>SECURITY.md</code>.</li>
+  <li><b>Confidentialité</b> : les échanges transitent par le service d'Anthropic ; aucun secret réel n'est dans git (<code>.env.local</code> ignoré), les fichiers de test étaient fictifs.</li>
+  <li><b>Compréhension</b> : un code non écrit par soi se comprend moins bien, d'où les commentaires et la documentation du dépôt.</li>
+  <li>Le projet ne dépend d'aucun outil d'IA pour fonctionner ou être maintenu : tout est dans le dépôt.</li>
+</ul>
+
+<p class="foot">Documentation générée à partir des fichiers du dépôt (README.md, SECURITY.md, TESTING.md, PERF.md, MAINTENANCE.md, AI.md, docs/openapi.yaml).
+Source : <code>docs/documentation-technique.html</code>.</p>
+
+</body>
+</html>
