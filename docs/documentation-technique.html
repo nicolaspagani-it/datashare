@@ -43,8 +43,10 @@
   .ent .h { background: #4457e0; color: #fff; font-weight: 700; padding: 4pt 8pt; font-size: 10pt; }
   .ent .r { padding: 2.5pt 8pt; border-bottom: 1px solid #e3e5f3; display: flex; justify-content: space-between; gap: 8pt; }
   .ent .r i { color: #586079; font-style: normal; }
-  .rel { width: 70pt; text-align: center; font-size: 8.5pt; color: #586079; }
-  .rel span { display: block; font-size: 16pt; color: #4457e0; line-height: 1; }
+  .rel { width: 118pt; padding: 0 4pt; text-align: center; font-size: 8.5pt; color: #586079; }
+  .rel .line { display: flex; align-items: center; gap: 3pt; margin-bottom: 4pt; }
+  .rel .line b { font-size: 11pt; color: #1b2233; white-space: nowrap; }
+  .rel .line .bar { flex: 1; height: 2px; background: #4457e0; display: block; }
   .break { page-break-before: always; }
   .foot { color: #586079; font-size: 9pt; margin-top: 18pt; }
 </style>
@@ -157,7 +159,10 @@ passe par l'API.</p>
     <div class="r"><span>roles</span><i>json</i></div>
     <div class="r"><span>password</span><i>hash du mot de passe</i></div>
   </div>
-  <div class="rel"><span>1 ─── 0..n</span>un compte,<br>plusieurs fichiers</div>
+  <div class="rel">
+    <div class="line"><b>1</b><i class="bar"></i><b>0..n</b></div>
+    un compte,<br>plusieurs fichiers
+  </div>
   <div class="ent">
     <div class="h">shared_file</div>
     <div class="r"><span>id</span><i>entier, clé primaire</i></div>
