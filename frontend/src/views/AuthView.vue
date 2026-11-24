@@ -43,6 +43,17 @@ watch(email, () => (fieldErrors.value.email = []))
 watch(password, () => (fieldErrors.value.password = []))
 watch([password, passwordConfirm], () => (fieldErrors.value.passwordConfirm = []))
 
+// Connexion et inscription sont le même composant : en passant de l'une à l'autre, Vue le réutilise
+// (il n'est pas recréé). On efface donc les erreurs à la main, pour qu'elles ne suivent pas d'une page à l'autre.
+watch(
+  () => props.mode,
+  () => {
+    error.value = ''
+    fieldErrors.value = emptyErrors()
+    passwordConfirm.value = ''
+  },
+)
+
 // Répartit les erreurs du serveur : "violations" = [{ propertyPath: 'email', title: '...' }].
 // propertyPath est le nom du champ côté Symfony (même nom que dans RegisterRequest).
 function dispatchViolations(violations) {
@@ -58,6 +69,14 @@ function dispatchViolations(violations) {
 async function submit() {
   error.value = ''
   fieldErrors.value = emptyErrors()
+
+  // Champs vides : message sous chaque champ concerné, sans appeler le serveur.
+  if (!email.value.trim()) fieldErrors.value.email = ['Veuillez renseigner votre adresse email.']
+  if (!password.value) fieldErrors.value.password = ['Veuillez renseigner votre mot de passe.']
+  if (!isLogin.value && !passwordConfirm.value) {
+    fieldErrors.value.passwordConfirm = ['Veuillez confirmer votre mot de passe.']
+  }
+  if (Object.values(fieldErrors.value).some((errors) => errors.length)) return
 
   // Inscription : on vérifie côté navigateur que les 2 mots de passe sont identiques.
   // (Le serveur, lui, ne reçoit que "password" et valide sa longueur.)

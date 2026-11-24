@@ -149,6 +149,68 @@ describe('AuthView', () => {
     })
   })
 
+  describe('champs vides et changement de page', () => {
+    it('connexion : message sous chaque champ vide, sans appeler le serveur', async () => {
+      const { wrapper, auth } = await mountView('login')
+      const login = vi.spyOn(auth, 'login').mockResolvedValue()
+
+      await fillAndSubmit(wrapper, [])
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual(['Veuillez renseigner votre adresse email.'])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual(['Veuillez renseigner votre mot de passe.'])
+      expect(wrapper.find('.card__error').exists()).toBe(false)
+      expect(login).not.toHaveBeenCalled()
+    })
+
+    it('connexion : seul le champ vide est signalé', async () => {
+      const { wrapper } = await mountView('login')
+
+      await fillAndSubmit(wrapper, ['alice@example.com'])
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual([])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual(['Veuillez renseigner votre mot de passe.'])
+    })
+
+    it('inscription : les champs vides sont aussi signalés', async () => {
+      const { wrapper } = await mountView('register')
+
+      await fillAndSubmit(wrapper, [])
+
+      expect(errorsUnder(wrapper, 'Email')).toEqual(['Veuillez renseigner votre adresse email.'])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual(['Veuillez renseigner votre mot de passe.'])
+    })
+
+    it('inscription : confirmation vide = "Veuillez confirmer votre mot de passe." (pas "non identiques")', async () => {
+      const { wrapper, auth } = await mountView('register')
+      const register = vi.spyOn(auth, 'register').mockResolvedValue()
+
+      await fillAndSubmit(wrapper, ['alice@example.com', 'password123'])
+
+      expect(errorsUnder(wrapper, 'Verification du mot de passe')).toEqual(['Veuillez confirmer votre mot de passe.'])
+      expect(errorsUnder(wrapper, 'Email')).toEqual([])
+      expect(errorsUnder(wrapper, 'Mot de passe')).toEqual([])
+      expect(register).not.toHaveBeenCalled()
+    })
+
+    it('les erreurs ne suivent pas quand on passe de la connexion à l\'inscription (et inversement)', async () => {
+      const { wrapper, auth } = await mountView('login')
+      vi.spyOn(auth, 'login').mockRejectedValue(Object.assign(new Error('x'), { status: 401 }))
+      await fillAndSubmit(wrapper, [])
+      await fillAndSubmit(wrapper, ['alice@example.com', 'mauvais'])
+      expect(wrapper.find('.card__error').exists()).toBe(true)
+
+      await wrapper.setProps({ mode: 'register' })
+      expect(wrapper.find('.card__error').exists()).toBe(false)
+      expect(wrapper.findAll('.field__error')).toHaveLength(0)
+
+      await fillAndSubmit(wrapper, ['', '', ''])
+      expect(wrapper.findAll('.field__error')).toHaveLength(3)
+
+      await wrapper.setProps({ mode: 'login' })
+      expect(wrapper.findAll('.field__error')).toHaveLength(0)
+    })
+  })
+
   describe('erreurs affichées sous le champ concerné', () => {
     // Fabrique l'erreur que lèverait api() : un message + la liste des violations.
     const apiError = (...violations) => Object.assign(new Error('violations'), { violations })
